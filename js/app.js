@@ -2,7 +2,9 @@
 
 /* =========================================================================
    Urlaubsabrechnung — reine Client-App, alle Daten in localStorage.
-   Kein Backend, keine Synchronisierung zwischen Geräten (siehe README).
+   Kein Backend, kein Live-Sync zwischen Geräten — mehrere Geräte (z.B.
+   zwei Partner-Handys) werden über JSON-Export + "Zusammenführen"-Import
+   kombiniert (siehe README).
    ========================================================================= */
 
 const STORAGE_KEY = "urlaubsabrechnung_v1";
@@ -30,8 +32,9 @@ function defaultState() {
   return {
     tripTitle: "",
     currency: "EUR",
+    owner: "", // optionaler Name, taggt neue Einträge dieses Geräts
     categories: [...DEFAULT_CATEGORIES],
-    expenses: [], // {id, amount, category, date (YYYY-MM-DD), note, createdAt}
+    expenses: [], // {id, amount, category, date (YYYY-MM-DD), note, owner, createdAt}
   };
 }
 
@@ -109,6 +112,8 @@ const saveHint = el("save-hint");
 
 const filterSearch = el("filter-search");
 const filterCategory = el("filter-category");
+const filterOwner = el("filter-owner");
+const sortOrder = el("sort-order");
 const expenseListEl = el("expense-list");
 const listEmptyEl = el("list-empty");
 
@@ -116,10 +121,14 @@ const summaryCardsEl = el("summary-cards");
 const chartCategoryCanvas = el("chart-category");
 const categoryLegendEl = el("category-legend");
 const chartDailyCanvas = el("chart-daily");
+const personSection = el("person-section");
+const chartOwnerCanvas = el("chart-owner");
+const ownerLegendEl = el("owner-legend");
 
 const settingsDialog = el("settings-dialog");
 const settingsForm = el("settings-form");
 const sTripTitle = el("s-trip-title");
+const sOwner = el("s-owner");
 const sCurrency = el("s-currency");
 const categoryManageList = el("category-manage-list");
 const sNewCategory = el("s-new-category");
@@ -166,6 +175,28 @@ function populateCurrencySelect() {
   sCurrency.value = state.currency;
 }
 
+function getOwnerList() {
+  // stabile, alphabetische Reihenfolge — unabhängig davon, wer zuerst importiert/eingetragen hat
+  const owners = new Set(state.expenses.map((x) => x.owner).filter(Boolean));
+  return [...owners].sort((a, b) => a.localeCompare(b, "de"));
+}
+
+function populateOwnerFilter() {
+  const owners = getOwnerList();
+  const prev = filterOwner.value;
+  if (owners.length < 2) {
+    // nur relevant, sobald Einträge von mehr als einer Person vorliegen
+    filterOwner.innerHTML = "";
+    filterOwner.hidden = true;
+    return;
+  }
+  filterOwner.hidden = false;
+  filterOwner.innerHTML =
+    `<option value="">Alle Personen</option>` +
+    owners.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+  if (owners.includes(prev)) filterOwner.value = prev;
+}
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -198,6 +229,7 @@ expenseForm.addEventListener("submit", (e) => {
     category: fCategory.value,
     date: fDate.value || todayISO(),
     note: fNote.value.trim().slice(0, 200),
+    owner: state.owner || "",
     createdAt: Date.now(),
   });
   saveState();
@@ -217,13 +249,23 @@ expenseForm.addEventListener("submit", (e) => {
 /* Liste                                                                    */
 /* ---------------------------------------------------------------------- */
 
+const SORTERS = {
+  "date-desc": (a, b) => (b.date === a.date ? b.createdAt - a.createdAt : b.date.localeCompare(a.date)),
+  "date-asc": (a, b) => (a.date === b.date ? a.createdAt - b.createdAt : a.date.localeCompare(b.date)),
+  "amount-desc": (a, b) => b.amount - a.amount,
+  "amount-asc": (a, b) => a.amount - b.amount,
+};
+
 function getFilteredExpenses() {
   const q = filterSearch.value.trim().toLowerCase();
   const cat = filterCategory.value;
+  const owner = filterOwner.value;
+  const sorter = SORTERS[sortOrder.value] || SORTERS["date-desc"];
   return state.expenses
     .filter((x) => (cat ? x.category === cat : true))
+    .filter((x) => (owner ? x.owner === owner : true))
     .filter((x) => (q ? x.note.toLowerCase().includes(q) : true))
-    .sort((a, b) => (b.date === a.date ? b.createdAt - a.createdAt : b.date.localeCompare(a.date)));
+    .sort(sorter);
 }
 
 function categoryColor(category) {
@@ -232,14 +274,21 @@ function categoryColor(category) {
   return cssVar(varName) || "#888";
 }
 
+function ownerColor(owner) {
+  const idx = getOwnerList().indexOf(owner);
+  const varName = CHART_COLOR_VARS[(idx < 0 ? 0 : idx) % CHART_COLOR_VARS.length];
+  return cssVar(varName) || "#888";
+}
+
 function renderList() {
+  populateOwnerFilter();
   const items = getFilteredExpenses();
   listEmptyEl.hidden = items.length > 0;
   expenseListEl.innerHTML = items.map((x) => `
     <li class="expense-item" data-id="${x.id}">
       <span class="cat-dot" style="background:${categoryColor(x.category)}"></span>
       <span class="info">
-        <span class="cat">${escapeHtml(x.category)}</span>
+        <span class="cat">${escapeHtml(x.category)}${x.owner ? ` · <span class="owner-tag">${escapeHtml(x.owner)}</span>` : ""}</span>
         ${x.note ? `<span class="note">${escapeHtml(x.note)}</span>` : ""}
         <span class="date">${fmtDate(x.date)}</span>
       </span>
@@ -264,6 +313,8 @@ expenseListEl.addEventListener("click", (e) => {
 
 filterSearch.addEventListener("input", renderList);
 filterCategory.addEventListener("change", renderList);
+filterOwner.addEventListener("change", renderList);
+sortOrder.addEventListener("change", renderList);
 
 /* ---------------------------------------------------------------------- */
 /* Auswertung                                                               */
@@ -295,14 +346,29 @@ function renderAuswertung() {
     </div>
   `;
 
-  renderCategoryChart(expenses);
+  renderHorizontalBarChart(chartCategoryCanvas, categoryLegendEl, groupByCategory(expenses), categoryColor);
   renderDailyChart(expenses);
+
+  const owners = getOwnerList();
+  personSection.hidden = owners.length < 2;
+  if (owners.length >= 2) {
+    renderHorizontalBarChart(chartOwnerCanvas, ownerLegendEl, groupByOwner(expenses), ownerColor);
+  }
 }
 
 function groupByCategory(expenses) {
   const map = new Map();
   for (const x of expenses) {
     map.set(x.category, (map.get(x.category) || 0) + x.amount);
+  }
+  return [...map.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function groupByOwner(expenses) {
+  const map = new Map();
+  for (const x of expenses) {
+    const key = x.owner || "(ohne Namen)";
+    map.set(key, (map.get(key) || 0) + x.amount);
   }
   return [...map.entries()].sort((a, b) => b[1] - a[1]);
 }
@@ -326,12 +392,11 @@ function setupCanvasDPR(canvas) {
   return { ctx, w: cssW, h: cssH };
 }
 
-function renderCategoryChart(expenses) {
-  const data = groupByCategory(expenses);
-  const { ctx, w, h } = setupCanvasDPR(chartCategoryCanvas);
+function renderHorizontalBarChart(canvas, legendEl, data, colorFn) {
+  const { ctx, w, h } = setupCanvasDPR(canvas);
   ctx.clearRect(0, 0, w, h);
 
-  categoryLegendEl.innerHTML = "";
+  legendEl.innerHTML = "";
 
   if (!data.length) {
     ctx.fillStyle = cssVar("--text-muted");
@@ -349,15 +414,15 @@ function renderCategoryChart(expenses) {
   ctx.font = "12px sans-serif";
   ctx.textBaseline = "middle";
 
-  data.forEach(([cat, amount], i) => {
+  data.forEach(([label, amount], i) => {
     const y = padding + i * rowH + rowH / 2;
     const barW = Math.max(2, (amount / max) * barAreaW);
-    const color = categoryColor(cat);
+    const color = colorFn(label);
 
     ctx.fillStyle = cssVar("--text");
     ctx.textAlign = "left";
-    const label = cat.length > 14 ? cat.slice(0, 13) + "…" : cat;
-    ctx.fillText(label, padding, y);
+    const shortLabel = label.length > 14 ? label.slice(0, 13) + "…" : label;
+    ctx.fillText(shortLabel, padding, y);
 
     ctx.fillStyle = color;
     const barX = padding + labelW;
@@ -371,9 +436,9 @@ function renderCategoryChart(expenses) {
 
     const li = document.createElement("li");
     li.innerHTML = `<span class="dot" style="background:${color}"></span>
-      <span class="lg-cat">${escapeHtml(cat)}</span>
+      <span class="lg-cat">${escapeHtml(label)}</span>
       <span class="lg-amount">${fmtMoney(amount)}</span>`;
-    categoryLegendEl.appendChild(li);
+    legendEl.appendChild(li);
   });
 }
 
@@ -462,10 +527,10 @@ function downloadBlob(content, filename, mime) {
 }
 
 el("btn-export-csv").addEventListener("click", () => {
-  const header = ["Datum", "Kategorie", "Betrag", `Währung`, "Notiz"];
+  const header = ["Datum", "Kategorie", "Betrag", "Währung", "Person", "Notiz"];
   const rows = [...state.expenses]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((x) => [x.date, x.category, x.amount.toFixed(2), state.currency, x.note].map(csvEscape).join(";"));
+    .map((x) => [x.date, x.category, x.amount.toFixed(2), state.currency, x.owner, x.note].map(csvEscape).join(";"));
   const csv = [header.join(";"), ...rows].join("\r\n");
   downloadBlob("﻿" + csv, `urlaubsausgaben-${slug(state.tripTitle)}.csv`, "text/csv;charset=utf-8");
 });
@@ -481,6 +546,46 @@ el("btn-export-json").addEventListener("click", () => {
     `urlaubsabrechnung-backup-${slug(state.tripTitle)}.json`,
     "application/json"
   );
+});
+
+el("btn-merge-json").addEventListener("click", () => el("merge-file-input").click());
+
+el("merge-file-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed.expenses)) throw new Error("Ungültiges Format");
+
+    const existingIds = new Set(state.expenses.map((x) => x.id));
+    const newOnes = parsed.expenses.filter((x) => x && x.id && !existingIds.has(x.id));
+
+    if (!newOnes.length) {
+      alert("Keine neuen Einträge in dieser Datei — alles bereits vorhanden.");
+      return;
+    }
+
+    let warning = "";
+    if (parsed.currency && parsed.currency !== state.currency) {
+      warning = `\n\nAchtung: Die Datei nutzt "${parsed.currency}", dieses Gerät "${state.currency}". Die Summen in der Auswertung werden dann NICHT stimmen — vorher auf beiden Geräten dieselbe Währung einstellen.`;
+    }
+
+    if (!confirm(`${newOnes.length} neue Einträge dazuladen (bestehende ${state.expenses.length} bleiben erhalten)?${warning}`)) return;
+
+    state.expenses.push(...newOnes);
+    if (Array.isArray(parsed.categories)) {
+      for (const c of parsed.categories) {
+        if (!state.categories.includes(c)) state.categories.push(c);
+      }
+    }
+    saveState();
+    refreshAll();
+    alert(`${newOnes.length} Einträge zusammengeführt.`);
+  } catch (err) {
+    alert("Konnte Datei nicht zusammenführen: " + err.message);
+  }
 });
 
 el("btn-import-json").addEventListener("click", () => el("import-file-input").click());
@@ -522,6 +627,7 @@ el("btn-clear-all").addEventListener("click", () => {
 
 el("btn-settings").addEventListener("click", () => {
   sTripTitle.value = state.tripTitle;
+  sOwner.value = state.owner;
   populateCurrencySelect();
   renderCategoryManageList();
   settingsDialog.showModal();
@@ -576,6 +682,7 @@ sNewCategory.addEventListener("keydown", (e) => {
 
 settingsForm.addEventListener("submit", () => {
   state.tripTitle = sTripTitle.value.trim();
+  state.owner = sOwner.value.trim();
   state.currency = sCurrency.value;
   saveState();
   refreshAll();

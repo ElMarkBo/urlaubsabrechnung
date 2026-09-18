@@ -66,6 +66,13 @@
     <div class="list-toolbar">
       <input type="text" id="filter-search" placeholder="Suche in Notizen…">
       <select id="filter-category"></select>
+      <select id="filter-owner"></select>
+      <select id="sort-order">
+        <option value="date-desc">Datum ↓ (neu zuerst)</option>
+        <option value="date-asc">Datum ↑ (alt zuerst)</option>
+        <option value="amount-desc">Betrag ↓ (hoch zuerst)</option>
+        <option value="amount-asc">Betrag ↑ (niedrig zuerst)</option>
+      </select>
     </div>
     <ul id="expense-list" class="expense-list"></ul>
     <p id="list-empty" class="hint" hidden>Noch keine Ausgaben erfasst.</p>
@@ -81,6 +88,12 @@
 
     <h2>Pro Tag</h2>
     <canvas id="chart-daily" width="600" height="220"></canvas>
+
+    <div id="person-section" hidden>
+      <h2>Nach Person</h2>
+      <canvas id="chart-owner" width="600" height="160"></canvas>
+      <ul id="owner-legend" class="legend"></ul>
+    </div>
 
     <div class="export-row">
       <button id="btn-export-csv">CSV exportieren</button>
@@ -101,7 +114,12 @@
     </label>
 
     <label>
-      Standard-Währung
+      Dein Name <span class="label-hint">(optional — markiert deine Einträge beim Zusammenführen mit anderen Geräten)</span>
+      <input type="text" id="s-owner" placeholder="z.B. Micha" maxlength="40">
+    </label>
+
+    <label>
+      Währung <span class="label-hint">(bitte auf allen Geräten gleich einstellen — sonst stimmen die Summen beim Zusammenführen nicht)</span>
       <select id="s-currency"></select>
     </label>
 
@@ -117,7 +135,11 @@
     <fieldset>
       <legend>Daten</legend>
       <div class="danger-row">
-        <button type="button" id="btn-import-json">Backup importieren</button>
+        <button type="button" id="btn-merge-json">Einträge zusammenführen (anderes Gerät dazuladen)</button>
+        <input type="file" id="merge-file-input" accept="application/json" hidden>
+      </div>
+      <div class="danger-row">
+        <button type="button" id="btn-import-json">Backup importieren (ersetzt alles)</button>
         <input type="file" id="import-file-input" accept="application/json" hidden>
       </div>
       <div class="danger-row">

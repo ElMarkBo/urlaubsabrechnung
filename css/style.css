@@ -118,6 +118,12 @@ label {
   margin-bottom: 14px;
 }
 
+.label-hint {
+  font-weight: 400;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
 input, select {
   display: block;
   width: 100%;
@@ -172,11 +178,12 @@ input:focus, select:focus {
 /* ---- List ---- */
 .list-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 14px;
 }
-.list-toolbar input { flex: 2; margin-top: 0; }
-.list-toolbar select { flex: 1; margin-top: 0; }
+.list-toolbar input { flex: 2 1 160px; margin-top: 0; }
+.list-toolbar select { flex: 1 1 120px; margin-top: 0; }
 
 .expense-list {
   list-style: none;
@@ -204,6 +211,7 @@ input:focus, select:focus {
 
 .expense-item .info { flex: 1; min-width: 0; }
 .expense-item .info .cat { font-weight: 600; font-size: 0.92rem; }
+.expense-item .info .owner-tag { font-weight: 400; color: var(--text-muted); }
 .expense-item .info .note {
   font-size: 0.85rem; color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

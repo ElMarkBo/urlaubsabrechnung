@@ -28,16 +28,33 @@ HTTPS ablegen.
 Nach der Installation läuft die App offline (der Service Worker cached
 alle Dateien beim ersten Laden).
 
-## Daten sichern / übertragen
+## Mehrere Personen / Geräte zusammenführen
 
-Einstellungen (⚙️) → „Backup (JSON) exportieren". Die Datei enthält alle
-Ausgaben, Kategorien und Einstellungen und lässt sich über „Backup
-importieren" auf einem anderen Gerät oder nach dem Löschen der
-Browserdaten wieder einspielen.
+Es gibt **keine Live-Synchronisierung** — jedes Gerät sammelt offline in
+seinem eigenen lokalen Speicher. Zwei (oder mehr) Personen, die
+unabhängig voneinander erfassen, führen ihre Daten so zusammen:
 
-**Wichtig:** Es gibt keine automatische Synchronisierung zwischen
-Geräten. Wer die App auf zwei Geräten nutzt, muss Backups manuell
-exportieren/importieren.
+1. In den Einstellungen (⚙️) jeweils **denselben Reisetitel und dieselbe
+   Währung** einstellen, optional den eigenen Namen unter „Dein Name"
+   eintragen (taggt die eigenen Einträge, praktisch beim Zusammenführen).
+2. Jede Person exportiert ihr Backup: ⚙️ → „Backup (JSON) exportieren".
+3. Auf einem Gerät (z.B. dem Desktop-Browser, für die Endauswertung)
+   die App öffnen und über ⚙️ → **„Einträge zusammenführen"** nacheinander
+   beide JSON-Dateien einladen. Das **ergänzt** die vorhandenen Einträge
+   (dedupliziert automatisch über die interne ID), statt sie zu
+   überschreiben.
+4. In der Liste/Auswertung lässt sich danach nach Person filtern bzw.
+   gibt es einen eigenen "Nach Person"-Chart (erscheint automatisch,
+   sobald Einträge von mindestens zwei Namen vorliegen).
+
+Der andere Import-Button, „Backup importieren (ersetzt alles)", ist für
+den reinen Wiederherstellungsfall gedacht (z.B. nach Gerätewechsel) —
+der überschreibt statt zu ergänzen.
+
+**Achtung Währung:** Es gibt keine Umrechnung zwischen Währungen. Wenn
+beide Geräte nicht dieselbe Währung eingestellt haben, warnt die App
+beim Zusammenführen, importiert aber trotzdem — die Summen sind dann
+nicht mehr aussagekräftig.
 
 ## Projektstruktur
 

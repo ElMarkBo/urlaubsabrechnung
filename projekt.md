@@ -19,24 +19,32 @@ Entscheidung unten). Daten liegen ausschließlich lokal im
 Browser-`localStorage` des jeweiligen Geräts.
 
 Grundfunktionen fertig:
-- Erfassen (Betrag, Kategorie, Datum, Notiz)
-- Liste (Filter nach Kategorie + Volltextsuche in Notizen, Löschen)
+- Erfassen (Betrag, Kategorie, Datum, Notiz, optional Person-Tag "Dein Name")
+- Liste (Filter nach Kategorie + Person + Volltextsuche, Sortierung nach
+  Datum/Betrag, Löschen)
 - Auswertung (Summary-Cards: Gesamt/Einträge/Tage/Ø pro Tag,
-  Kategorie-Balkendiagramm, Tages-Balkendiagramm — beide per Canvas,
-  keine externe Chart-Bibliothek)
-- Einstellungen: Reisetitel, Währung, Kategorien verwalten (hinzufügen/entfernen)
-- CSV-Export, JSON-Backup-Export/Import, „Alle Daten löschen"
+  Kategorie-Balkendiagramm, Tages-Balkendiagramm, Personen-Balkendiagramm
+  (nur sichtbar ab 2 Namen) — alle per Canvas, keine externe Chart-Bibliothek)
+- Einstellungen: Reisetitel, Dein Name, Währung, Kategorien verwalten
+- CSV-Export (inkl. Person-Spalte), JSON-Backup-Export/Import (ersetzt alles),
+  JSON-"Zusammenführen"-Import (ergänzt, dedupliziert per ID),
+  „Alle Daten löschen"
 - Offline-fähig per Service Worker (App-Shell-Cache)
 
 ## Bewusste Scope-Entscheidungen
 
 - **Eine Währung pro Reise**, kein Mischen/Umrechnen mehrerer Währungen.
-- **Kein Sync zwischen Geräten** — Daten sind rein lokal (Browser-Storage).
-  Backup-Export/Import (JSON) ist der einzige Weg, Daten zu übertragen
-  oder zu sichern.
-- **Keine Personen-Aufteilung** (kein Splitwise-artiges Feature) — auf
-  Nutzerwunsch bewusst nicht gebaut, nur „eigene Ausgaben erfassen +
-  auswerten".
+- **Kein Live-Sync zwischen Geräten**, dafür ein **"Zusammenführen"-Import**
+  (ergänzt statt überschreibt, dedupliziert per ID). Grund: Erfassung muss
+  komplett offline funktionieren (kein Netz am Urlaubsort) — "live"
+  synchronisieren geht in dem Fall ohnehin nicht, ein manueller/periodischer
+  Abgleich per JSON-Export ist die einzig robuste Option ohne Backend.
+  Für zwei Personen, die unabhängig auf eigenem Handy erfassen (Workflow
+  in `README.md`).
+- **Kein Splitwise-artiges Aufteilungs-/Schulden-Feature** — auf
+  Nutzerwunsch bewusst nicht gebaut. Es gibt aber ein leichtgewichtiges
+  optionales "Dein Name"-Feld pro Gerät, das Einträge taggt (nur
+  Sichtbarkeit/Filter/Sortierung "nach Person", keine Verrechnung).
 - **PWA statt native App** — einzige praktikable Ein-Codebasis-Lösung für
   Android + iOS ohne Mac/Xcode/Apple-Developer-Account.
 
