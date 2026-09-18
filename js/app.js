@@ -1,68 +1,35 @@
 "use strict";
 
 /* =========================================================================
-   Urlaubsabrechnung — reine Client-App, alle Daten in localStorage.
-   Kein Backend, kein Live-Sync zwischen Geräten — mehrere Geräte (z.B.
-   zwei Partner-Handys) werden über JSON-Export + "Zusammenführen"-Import
-   kombiniert (siehe README).
+   Urlaubsabrechnung — UI-Logik. Alle Cloud-/Sync-Details stecken in
+   sync.js (Firebase Auth + Firestore mit Offline-Persistenz); diese
+   Datei kennt nur dessen Funktionen und rendert das Ergebnis.
+
+   Geteilter Zustand (Titel, Währung, Kategorien, Ausgaben) kommt aus
+   Firestore und wird automatisch zwischen allen Geräten synchronisiert,
+   die denselben Reise-Code kennen. Nur der eigene Name ("Dein Name")
+   ist geräte-lokal (localStorage), nicht Teil der Reise-Daten.
    ========================================================================= */
 
-const STORAGE_KEY = "urlaubsabrechnung_v1";
+import * as sync from "./sync.js";
 
-const DEFAULT_CATEGORIES = [
-  "Unterkunft",
-  "Essen & Trinken",
-  "Transport",
-  "Aktivitäten",
-  "Einkäufe",
-  "Sonstiges",
-];
+const OWNER_KEY = "urlaubsabrechnung_owner";
 
 const CURRENCIES = [
   "EUR", "USD", "GBP", "CHF", "JPY", "SEK", "NOK", "DKK",
   "PLN", "CZK", "HUF", "TRY", "THB", "AUD", "CAD",
 ];
 
+const DEFAULT_CATEGORIES = ["Unterkunft", "Essen", "Auto", "Freizeit"];
+
 const CHART_COLOR_VARS = [
   "--chart-1", "--chart-2", "--chart-3", "--chart-4",
   "--chart-5", "--chart-6", "--chart-7", "--chart-8",
 ];
 
-function defaultState() {
-  return {
-    tripTitle: "",
-    currency: "EUR",
-    owner: "", // optionaler Name, taggt neue Einträge dieses Geräts
-    categories: [...DEFAULT_CATEGORIES],
-    expenses: [], // {id, amount, category, date (YYYY-MM-DD), note, owner, createdAt}
-  };
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    // defensive merge in case of older/partial data
-    return {
-      ...defaultState(),
-      ...parsed,
-      categories: Array.isArray(parsed.categories) && parsed.categories.length
-        ? parsed.categories
-        : [...DEFAULT_CATEGORIES],
-      expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [],
-    };
-  } catch (err) {
-    console.error("Konnte gespeicherte Daten nicht lesen, starte leer.", err);
-    return defaultState();
-  }
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-let state = loadState();
+// In-memory Spiegel der Firestore-Daten der aktuellen Reise.
+let trip = { title: "", currency: "EUR", categories: [...DEFAULT_CATEGORIES], expenses: [] };
+let ownerName = localStorage.getItem(OWNER_KEY) || "";
 
 function uid() {
   if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -78,7 +45,7 @@ function todayISO() {
 function fmtMoney(amount) {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
-    currency: state.currency,
+    currency: trip.currency || "EUR",
     currencyDisplay: "code",
   }).format(amount);
 }
@@ -92,12 +59,26 @@ function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
 /* ---------------------------------------------------------------------- */
 /* DOM refs                                                                */
 /* ---------------------------------------------------------------------- */
 
 const el = (id) => document.getElementById(id);
 
+const onboardingEl = el("onboarding");
+const appRootEl = el("app-root");
+const obTitle = el("ob-title");
+const obCode = el("ob-code");
+const obJoinError = el("ob-join-error");
+const obConfigWarning = el("ob-config-warning");
+
+const syncStatusEl = el("sync-status");
 const tripTitleDisplay = el("trip-title-display");
 const tabsNav = el("tabs");
 const tabPanels = document.querySelectorAll(".tab-panel");
@@ -132,6 +113,51 @@ const sOwner = el("s-owner");
 const sCurrency = el("s-currency");
 const categoryManageList = el("category-manage-list");
 const sNewCategory = el("s-new-category");
+const sTripCode = el("s-trip-code");
+
+/* ---------------------------------------------------------------------- */
+/* Onboarding (Reise anlegen / beitreten)                                  */
+/* ---------------------------------------------------------------------- */
+
+function showOnboarding() {
+  onboardingEl.hidden = false;
+  appRootEl.hidden = true;
+}
+
+function showApp() {
+  onboardingEl.hidden = true;
+  appRootEl.hidden = false;
+}
+
+el("btn-create-trip").addEventListener("click", async () => {
+  const title = obTitle.value.trim();
+  el("btn-create-trip").disabled = true;
+  try {
+    await sync.createTrip({ title, currency: "EUR", categories: [...DEFAULT_CATEGORIES] });
+    showApp();
+  } catch (err) {
+    alert("Reise konnte nicht angelegt werden: " + err.message);
+  } finally {
+    el("btn-create-trip").disabled = false;
+  }
+});
+
+el("btn-join-trip").addEventListener("click", async () => {
+  obJoinError.hidden = true;
+  el("btn-join-trip").disabled = true;
+  try {
+    const ok = await sync.joinTrip(obCode.value);
+    if (ok) {
+      showApp();
+    } else {
+      obJoinError.hidden = false;
+    }
+  } catch (err) {
+    alert("Beitreten fehlgeschlagen: " + err.message);
+  } finally {
+    el("btn-join-trip").disabled = false;
+  }
+});
 
 /* ---------------------------------------------------------------------- */
 /* Tabs                                                                    */
@@ -153,13 +179,13 @@ function populateCategorySelects() {
   const selects = [fCategory, filterCategory];
   const prevValues = selects.map((s) => s.value);
 
-  fCategory.innerHTML = state.categories
+  fCategory.innerHTML = trip.categories
     .map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`)
     .join("");
 
   filterCategory.innerHTML =
     `<option value="">Alle Kategorien</option>` +
-    state.categories.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    trip.categories.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
 
   selects.forEach((s, i) => {
     if (prevValues[i] && [...s.options].some((o) => o.value === prevValues[i])) {
@@ -169,15 +195,12 @@ function populateCategorySelects() {
 }
 
 function populateCurrencySelect() {
-  sCurrency.innerHTML = CURRENCIES.map(
-    (c) => `<option value="${c}">${c}</option>`
-  ).join("");
-  sCurrency.value = state.currency;
+  sCurrency.innerHTML = CURRENCIES.map((c) => `<option value="${c}">${c}</option>`).join("");
+  sCurrency.value = trip.currency;
 }
 
 function getOwnerList() {
-  // stabile, alphabetische Reihenfolge — unabhängig davon, wer zuerst importiert/eingetragen hat
-  const owners = new Set(state.expenses.map((x) => x.owner).filter(Boolean));
+  const owners = new Set(trip.expenses.map((x) => x.owner).filter(Boolean));
   return [...owners].sort((a, b) => a.localeCompare(b, "de"));
 }
 
@@ -185,7 +208,6 @@ function populateOwnerFilter() {
   const owners = getOwnerList();
   const prev = filterOwner.value;
   if (owners.length < 2) {
-    // nur relevant, sobald Einträge von mehr als einer Person vorliegen
     filterOwner.innerHTML = "";
     filterOwner.hidden = true;
     return;
@@ -197,19 +219,13 @@ function populateOwnerFilter() {
   if (owners.includes(prev)) filterOwner.value = prev;
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
-
 /* ---------------------------------------------------------------------- */
 /* Header / labels                                                         */
 /* ---------------------------------------------------------------------- */
 
 function renderHeader() {
-  tripTitleDisplay.textContent = state.tripTitle || "Urlaubsabrechnung";
-  fCurrencyLabel.textContent = state.currency;
+  tripTitleDisplay.textContent = trip.title || "Urlaubsabrechnung";
+  fCurrencyLabel.textContent = trip.currency;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -223,16 +239,17 @@ expenseForm.addEventListener("submit", (e) => {
   const amount = parseFloat(fAmount.value.replace(",", "."));
   if (!isFinite(amount) || amount <= 0) return;
 
-  state.expenses.push({
+  const expense = {
     id: uid(),
     amount: Math.round(amount * 100) / 100,
     category: fCategory.value,
     date: fDate.value || todayISO(),
     note: fNote.value.trim().slice(0, 200),
-    owner: state.owner || "",
+    owner: ownerName,
     createdAt: Date.now(),
-  });
-  saveState();
+  };
+
+  sync.addExpense(expense).catch((err) => alert("Konnte Eintrag nicht speichern: " + err.message));
 
   fAmount.value = "";
   fNote.value = "";
@@ -241,8 +258,6 @@ expenseForm.addEventListener("submit", (e) => {
   saveHint.hidden = false;
   clearTimeout(saveHint._t);
   saveHint._t = setTimeout(() => { saveHint.hidden = true; }, 1600);
-
-  renderList();
 });
 
 /* ---------------------------------------------------------------------- */
@@ -261,7 +276,7 @@ function getFilteredExpenses() {
   const cat = filterCategory.value;
   const owner = filterOwner.value;
   const sorter = SORTERS[sortOrder.value] || SORTERS["date-desc"];
-  return state.expenses
+  return trip.expenses
     .filter((x) => (cat ? x.category === cat : true))
     .filter((x) => (owner ? x.owner === owner : true))
     .filter((x) => (q ? x.note.toLowerCase().includes(q) : true))
@@ -269,7 +284,7 @@ function getFilteredExpenses() {
 }
 
 function categoryColor(category) {
-  const idx = state.categories.indexOf(category);
+  const idx = trip.categories.indexOf(category);
   const varName = CHART_COLOR_VARS[(idx < 0 ? 0 : idx) % CHART_COLOR_VARS.length];
   return cssVar(varName) || "#888";
 }
@@ -302,13 +317,10 @@ expenseListEl.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-del]");
   if (!btn) return;
   const id = btn.dataset.del;
-  const idx = state.expenses.findIndex((x) => x.id === id);
-  if (idx === -1) return;
-  const item = state.expenses[idx];
+  const item = trip.expenses.find((x) => x.id === id);
+  if (!item) return;
   if (!confirm(`Eintrag "${item.category} · ${fmtMoney(item.amount)}" löschen?`)) return;
-  state.expenses.splice(idx, 1);
-  saveState();
-  renderList();
+  sync.deleteExpense(id).catch((err) => alert("Konnte nicht löschen: " + err.message));
 });
 
 filterSearch.addEventListener("input", renderList);
@@ -321,7 +333,7 @@ sortOrder.addEventListener("change", renderList);
 /* ---------------------------------------------------------------------- */
 
 function renderAuswertung() {
-  const expenses = state.expenses;
+  const expenses = trip.expenses;
   const total = expenses.reduce((s, x) => s + x.amount, 0);
   const days = new Set(expenses.map((x) => x.date));
   const dayCount = days.size;
@@ -507,7 +519,7 @@ if (window.matchMedia) {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Export / Import                                                         */
+/* Export                                                                   */
 /* ---------------------------------------------------------------------- */
 
 function slug(str) {
@@ -526,99 +538,26 @@ function downloadBlob(content, filename, mime) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-el("btn-export-csv").addEventListener("click", () => {
-  const header = ["Datum", "Kategorie", "Betrag", "Währung", "Person", "Notiz"];
-  const rows = [...state.expenses]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((x) => [x.date, x.category, x.amount.toFixed(2), state.currency, x.owner, x.note].map(csvEscape).join(";"));
-  const csv = [header.join(";"), ...rows].join("\r\n");
-  downloadBlob("﻿" + csv, `urlaubsausgaben-${slug(state.tripTitle)}.csv`, "text/csv;charset=utf-8");
-});
-
 function csvEscape(v) {
   const s = String(v ?? "");
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+el("btn-export-csv").addEventListener("click", () => {
+  const header = ["Datum", "Kategorie", "Betrag", "Währung", "Person", "Notiz"];
+  const rows = [...trip.expenses]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((x) => [x.date, x.category, x.amount.toFixed(2), trip.currency, x.owner, x.note].map(csvEscape).join(";"));
+  const csv = [header.join(";"), ...rows].join("\r\n");
+  downloadBlob("﻿" + csv, `urlaubsausgaben-${slug(trip.title)}.csv`, "text/csv;charset=utf-8");
+});
+
 el("btn-export-json").addEventListener("click", () => {
   downloadBlob(
-    JSON.stringify(state, null, 2),
-    `urlaubsabrechnung-backup-${slug(state.tripTitle)}.json`,
+    JSON.stringify({ ...trip, tripId: sync.getCurrentTripId() }, null, 2),
+    `urlaubsabrechnung-backup-${slug(trip.title)}.json`,
     "application/json"
   );
-});
-
-el("btn-merge-json").addEventListener("click", () => el("merge-file-input").click());
-
-el("merge-file-input").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  e.target.value = "";
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed.expenses)) throw new Error("Ungültiges Format");
-
-    const existingIds = new Set(state.expenses.map((x) => x.id));
-    const newOnes = parsed.expenses.filter((x) => x && x.id && !existingIds.has(x.id));
-
-    if (!newOnes.length) {
-      alert("Keine neuen Einträge in dieser Datei — alles bereits vorhanden.");
-      return;
-    }
-
-    let warning = "";
-    if (parsed.currency && parsed.currency !== state.currency) {
-      warning = `\n\nAchtung: Die Datei nutzt "${parsed.currency}", dieses Gerät "${state.currency}". Die Summen in der Auswertung werden dann NICHT stimmen — vorher auf beiden Geräten dieselbe Währung einstellen.`;
-    }
-
-    if (!confirm(`${newOnes.length} neue Einträge dazuladen (bestehende ${state.expenses.length} bleiben erhalten)?${warning}`)) return;
-
-    state.expenses.push(...newOnes);
-    if (Array.isArray(parsed.categories)) {
-      for (const c of parsed.categories) {
-        if (!state.categories.includes(c)) state.categories.push(c);
-      }
-    }
-    saveState();
-    refreshAll();
-    alert(`${newOnes.length} Einträge zusammengeführt.`);
-  } catch (err) {
-    alert("Konnte Datei nicht zusammenführen: " + err.message);
-  }
-});
-
-el("btn-import-json").addEventListener("click", () => el("import-file-input").click());
-
-el("import-file-input").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  e.target.value = "";
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed.expenses)) throw new Error("Ungültiges Format");
-    if (!confirm("Backup importieren? Das ersetzt alle aktuell gespeicherten Daten.")) return;
-    state = {
-      ...defaultState(),
-      ...parsed,
-      categories: Array.isArray(parsed.categories) && parsed.categories.length
-        ? parsed.categories
-        : [...DEFAULT_CATEGORIES],
-    };
-    saveState();
-    refreshAll();
-    alert("Backup importiert.");
-  } catch (err) {
-    alert("Konnte Datei nicht importieren: " + err.message);
-  }
-});
-
-el("btn-clear-all").addEventListener("click", () => {
-  if (!confirm("Wirklich ALLE Ausgaben und Einstellungen löschen? Das kann nicht rückgängig gemacht werden.")) return;
-  state = defaultState();
-  saveState();
-  refreshAll();
 });
 
 /* ---------------------------------------------------------------------- */
@@ -626,15 +565,16 @@ el("btn-clear-all").addEventListener("click", () => {
 /* ---------------------------------------------------------------------- */
 
 el("btn-settings").addEventListener("click", () => {
-  sTripTitle.value = state.tripTitle;
-  sOwner.value = state.owner;
+  sTripTitle.value = trip.title;
+  sOwner.value = ownerName;
+  sTripCode.textContent = sync.getCurrentTripId() || "------";
   populateCurrencySelect();
   renderCategoryManageList();
   settingsDialog.showModal();
 });
 
 function renderCategoryManageList() {
-  categoryManageList.innerHTML = state.categories.map((c, i) => `
+  categoryManageList.innerHTML = trip.categories.map((c, i) => `
     <li>
       <span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${categoryColor(c)}"></span>
       <span>${escapeHtml(c)}</span>
@@ -647,29 +587,29 @@ categoryManageList.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-remove-cat]");
   if (!btn) return;
   const idx = Number(btn.dataset.removeCat);
-  if (state.categories.length <= 1) {
+  if (trip.categories.length <= 1) {
     alert("Mindestens eine Kategorie muss bestehen bleiben.");
     return;
   }
-  const removed = state.categories[idx];
-  const inUse = state.expenses.some((x) => x.category === removed);
+  const removed = trip.categories[idx];
+  const inUse = trip.expenses.some((x) => x.category === removed);
   if (inUse && !confirm(`"${removed}" wird noch bei bestehenden Einträgen verwendet. Trotzdem aus der Liste entfernen? Bestehende Einträge behalten den Namen.`)) {
     return;
   }
-  state.categories.splice(idx, 1);
-  renderCategoryManageList();
+  const newCategories = trip.categories.filter((_, i) => i !== idx);
+  sync.updateTripMeta({ categories: newCategories }).catch((err) => alert("Konnte nicht speichern: " + err.message));
 });
 
 function addCategoryFromInput() {
   const name = sNewCategory.value.trim();
   if (!name) return;
-  if (state.categories.includes(name)) {
+  if (trip.categories.includes(name)) {
     alert("Diese Kategorie gibt es schon.");
     return;
   }
-  state.categories.push(name);
+  const newCategories = [...trip.categories, name];
   sNewCategory.value = "";
-  renderCategoryManageList();
+  sync.updateTripMeta({ categories: newCategories }).catch((err) => alert("Konnte nicht speichern: " + err.message));
 }
 
 el("btn-add-category").addEventListener("click", addCategoryFromInput);
@@ -680,33 +620,107 @@ sNewCategory.addEventListener("keydown", (e) => {
   }
 });
 
+el("btn-copy-code").addEventListener("click", async () => {
+  const tripId = sync.getCurrentTripId();
+  if (!tripId) return;
+  const link = `${location.origin}${location.pathname}?trip=${tripId}`;
+  try {
+    await navigator.clipboard.writeText(link);
+    const btn = el("btn-copy-code");
+    const original = btn.textContent;
+    btn.textContent = "Kopiert!";
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  } catch {
+    alert(`Konnte nicht automatisch kopieren. Code/Link von Hand teilen:\n\n${tripId}\n${link}`);
+  }
+});
+
+el("btn-leave-trip").addEventListener("click", () => {
+  if (!confirm("Reise auf diesem Gerät verlassen? Die Daten bleiben in der Cloud erhalten, nur dieses Gerät verliert die Verknüpfung.")) return;
+  sync.leaveTrip();
+  location.reload();
+});
+
 settingsForm.addEventListener("submit", () => {
-  state.tripTitle = sTripTitle.value.trim();
-  state.owner = sOwner.value.trim();
-  state.currency = sCurrency.value;
-  saveState();
-  refreshAll();
+  ownerName = sOwner.value.trim();
+  localStorage.setItem(OWNER_KEY, ownerName);
+  sync.updateTripMeta({
+    title: sTripTitle.value.trim(),
+    currency: sCurrency.value,
+  }).catch((err) => alert("Konnte nicht speichern: " + err.message));
 });
 
 /* ---------------------------------------------------------------------- */
-/* Init                                                                     */
+/* Sync-Callbacks / Init                                                    */
 /* ---------------------------------------------------------------------- */
 
-function refreshAll() {
+function onTripData(data) {
+  if (!data) return; // Reise existiert (noch) nicht / noch nicht synchronisiert
+  trip.title = data.title || "";
+  trip.currency = data.currency || "EUR";
+  trip.categories = Array.isArray(data.categories) && data.categories.length
+    ? data.categories
+    : [...DEFAULT_CATEGORIES];
   renderHeader();
   populateCategorySelects();
+  if (!settingsDialog.open) return;
+  sTripTitle.value = trip.title;
+  sCurrency.value = trip.currency;
+  renderCategoryManageList();
+}
+
+function onExpenses(expenses) {
+  trip.expenses = expenses;
   renderList();
   if (document.getElementById("tab-auswertung").classList.contains("active")) {
     renderAuswertung();
   }
 }
 
-refreshAll();
+function onConnectionChange(isSynced) {
+  syncStatusEl.classList.toggle("synced", isSynced);
+  syncStatusEl.title = isSynced
+    ? "Synchronisiert"
+    : "Offline oder wird gerade synchronisiert — Einträge sind lokal gespeichert und gehen nicht verloren.";
+}
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
+async function init() {
+  if (!sync.isConfigured()) {
+    obConfigWarning.hidden = false;
+    el("btn-create-trip").disabled = true;
+    el("btn-join-trip").disabled = true;
+    showOnboarding();
+    return;
+  }
+
+  await sync.initSync({ onTripData, onExpenses, onConnectionChange, onAuthError: () => {} });
+
+  const params = new URLSearchParams(location.search);
+  const urlCode = params.get("trip");
+  if (urlCode) {
+    history.replaceState(null, "", location.pathname);
+  }
+
+  if (sync.getStoredTripId()) {
+    sync.resumeStoredTrip();
+    showApp();
+  } else if (urlCode) {
+    const ok = await sync.joinTrip(urlCode);
+    if (ok) {
+      showApp();
+    } else {
+      showOnboarding();
+      obJoinError.hidden = false;
+    }
+  } else {
+    showOnboarding();
+  }
+
+  if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch((err) => {
       console.warn("Service Worker Registrierung fehlgeschlagen:", err);
     });
-  });
+  }
 }
+
+init();

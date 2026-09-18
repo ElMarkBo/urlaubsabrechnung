@@ -72,10 +72,50 @@ body {
   color: var(--accent-contrast);
 }
 .topbar h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
 .icon-btn {
   background: none; border: none; font-size: 1.3rem; cursor: pointer;
   color: inherit; padding: 4px 8px; line-height: 1;
 }
+
+.sync-status {
+  font-size: 0.9rem;
+  color: #e0a63c; /* amber = offline / wird noch synchronisiert */
+  transition: color 0.2s;
+}
+.sync-status.synced { color: #4c9a7e; }
+
+/* ---- Onboarding ---- */
+#onboarding {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+.onboarding-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+.onboarding-card h1 { margin: 0 0 6px; font-size: 1.3rem; }
+.onboarding-card .hint { text-align: left; margin: 0 0 20px; }
+.onboarding-block h2 {
+  font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--text-muted); margin: 0 0 12px;
+}
+.onboarding-divider {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 20px 0;
+  position: relative;
+}
+.hint.error { color: var(--danger); }
 
 .tabs {
   display: flex;
@@ -346,6 +386,32 @@ fieldset legend { padding: 0 6px; color: var(--text-muted); font-size: 0.85rem; 
   background: var(--accent);
   color: var(--accent-contrast);
   font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.trip-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.trip-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 8px 12px;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  flex: 1;
+  text-align: center;
+}
+.trip-code-row button {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
   cursor: pointer;
 }
 

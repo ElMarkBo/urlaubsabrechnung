@@ -1,6 +1,6 @@
 // Simple app-shell cache for offline use. Bump CACHE_VERSION on any
 // change to the cached files so clients pick up the new version.
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = `urlaubsabrechnung-${CACHE_VERSION}`;
 
 const APP_SHELL = [
@@ -9,6 +9,8 @@ const APP_SHELL = [
   "./manifest.json",
   "./css/style.css",
   "./js/app.js",
+  "./js/sync.js",
+  "./js/firebase-config.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

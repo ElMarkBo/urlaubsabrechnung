@@ -17,9 +17,49 @@
 </head>
 <body>
 
+<!-- ===== Onboarding: Reise anlegen / beitreten ===== -->
+<section id="onboarding" hidden>
+  <div class="onboarding-card">
+    <h1>Urlaubsabrechnung</h1>
+    <p class="hint">Neue Reise starten oder einem bestehenden Reise-Code beitreten (den dir deine Mitreisenden geben).</p>
+
+    <div class="onboarding-block">
+      <h2>Neue Reise</h2>
+      <label>
+        Reise-Titel
+        <input type="text" id="ob-title" placeholder="z.B. Kroatien 2026" maxlength="60">
+      </label>
+      <button id="btn-create-trip" class="primary-btn">Reise starten</button>
+    </div>
+
+    <div class="onboarding-divider">oder</div>
+
+    <div class="onboarding-block">
+      <h2>Reise beitreten</h2>
+      <label>
+        Reise-Code
+        <input type="text" id="ob-code" placeholder="z.B. K7M2QX" maxlength="6" autocapitalize="characters">
+      </label>
+      <button id="btn-join-trip" class="primary-btn">Beitreten</button>
+      <p id="ob-join-error" class="hint error" hidden>Code nicht gefunden. Bitte prüfen.</p>
+    </div>
+
+    <p id="ob-config-warning" class="hint error" hidden>
+      Firebase ist noch nicht eingerichtet (js/firebase-config.js). Ohne
+      das funktioniert kein Sync — siehe projekt.md.
+    </p>
+  </div>
+</section>
+
+<!-- ===== Haupt-App ===== -->
+<div id="app-root" hidden>
+
 <header class="topbar">
   <h1 id="trip-title-display">Urlaubsabrechnung</h1>
-  <button id="btn-settings" class="icon-btn" aria-label="Einstellungen">⚙️</button>
+  <div class="topbar-right">
+    <span id="sync-status" class="sync-status" title="Sync-Status">●</span>
+    <button id="btn-settings" class="icon-btn" aria-label="Einstellungen">⚙️</button>
+  </div>
 </header>
 
 <nav class="tabs" id="tabs">
@@ -114,12 +154,12 @@
     </label>
 
     <label>
-      Dein Name <span class="label-hint">(optional — markiert deine Einträge beim Zusammenführen mit anderen Geräten)</span>
+      Dein Name <span class="label-hint">(optional — markiert deine Einträge, sichtbar für Mitreisende)</span>
       <input type="text" id="s-owner" placeholder="z.B. Micha" maxlength="40">
     </label>
 
     <label>
-      Währung <span class="label-hint">(bitte auf allen Geräten gleich einstellen — sonst stimmen die Summen beim Zusammenführen nicht)</span>
+      Währung <span class="label-hint">(gilt für die ganze Reise, für alle Geräte gemeinsam)</span>
       <select id="s-currency"></select>
     </label>
 
@@ -133,17 +173,14 @@
     </fieldset>
 
     <fieldset>
-      <legend>Daten</legend>
-      <div class="danger-row">
-        <button type="button" id="btn-merge-json">Einträge zusammenführen (anderes Gerät dazuladen)</button>
-        <input type="file" id="merge-file-input" accept="application/json" hidden>
+      <legend>Reise teilen</legend>
+      <p class="hint">Diesen Code an Mitreisende geben, damit ihre Einträge automatisch mit einlaufen:</p>
+      <div class="trip-code-row">
+        <span id="s-trip-code" class="trip-code">------</span>
+        <button type="button" id="btn-copy-code">Kopieren</button>
       </div>
       <div class="danger-row">
-        <button type="button" id="btn-import-json">Backup importieren (ersetzt alles)</button>
-        <input type="file" id="import-file-input" accept="application/json" hidden>
-      </div>
-      <div class="danger-row">
-        <button type="button" id="btn-clear-all" class="danger-btn">Alle Daten löschen</button>
+        <button type="button" id="btn-leave-trip" class="danger-btn">Reise verlassen (auf diesem Gerät)</button>
       </div>
     </fieldset>
 
@@ -153,6 +190,8 @@
   </form>
 </dialog>
 
-<script src="js/app.js"></script>
+</div>
+
+<script type="module" src="js/app.js"></script>
 </body>
 </html>

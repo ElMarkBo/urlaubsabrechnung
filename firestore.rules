@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Diese Datei wird NICHT automatisch deployed — sie ist die Referenz-Kopie
+// für die Regeln, die in der Firebase-Konsole unter Firestore Database →
+// Regeln eingefügt werden müssen (siehe projekt.md / README.md).
+//
+// Sicherheitsmodell: jeder, der den (zufällig generierten, 6-stelligen)
+// Reise-Code kennt, darf diese eine Reise lesen/schreiben. Es gibt keine
+// feingranulare Rechteprüfung pro Nutzer — das ist eine bewusste
+// Vereinfachung für eine private Zwei-Personen-Urlaubskasse, keine
+// Lösung für sensible Daten. Schutz vor fremdem Zugriff kommt allein
+// daher, dass der Code nicht öffentlich geteilt wird.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /trips/{tripId} {
+      allow read, write: if request.auth != null;
+
+      match /expenses/{expenseId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+  }
+}
