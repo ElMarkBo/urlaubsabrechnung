@@ -10,7 +10,7 @@
 
 ---
 
-## Status (Stand 2026-09-18)
+## Status (Stand 2026-09-19)
 
 PWA (HTML/CSS/JS, kein Framework) für Android + iOS über „Zum
 Home-Bildschirm" (kein natives Projekt, siehe Entscheidung unten).
