@@ -10,10 +10,10 @@
 // (siehe projekt.md, Abschnitt "Firebase-Einrichtung"). Ohne diese Werte
 // bleibt die App im Demo/Offline-Zustand ohne Sync.
 export const firebaseConfig = {
-  apiKey: "TODO",
-  authDomain: "TODO.firebaseapp.com",
-  projectId: "TODO",
-  storageBucket: "TODO.appspot.com",
-  messagingSenderId: "TODO",
-  appId: "TODO",
+  apiKey: "AIzaSyBktfjSMJoenZLaRdacr5KGhYnf0NQ9OWc",
+  authDomain: "urlaubskasse-7b6ee.firebaseapp.com",
+  projectId: "urlaubskasse-7b6ee",
+  storageBucket: "urlaubskasse-7b6ee.firebasestorage.app",
+  messagingSenderId: "852226595926",
+  appId: "1:852226595926:web:7addfca0ce92f176b1aff7",
 };
