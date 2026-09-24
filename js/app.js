@@ -89,6 +89,8 @@ const fCurrencyLabel = el("f-currency-label");
 const fCategory = el("f-category");
 const fDate = el("f-date");
 const fNote = el("f-note");
+const fSubmitBtn = el("f-submit-btn");
+const fCancelEdit = el("f-cancel-edit");
 const saveHint = el("save-hint");
 
 const filterSearch = el("filter-search");
@@ -234,26 +236,62 @@ function renderHeader() {
 
 fDate.value = todayISO();
 
+let editingId = null;
+
+function startEdit(item) {
+  editingId = item.id;
+  fAmount.value = item.amount;
+  fCategory.value = item.category;
+  fDate.value = item.date;
+  fNote.value = item.note || "";
+  fSubmitBtn.textContent = "Speichern";
+  fCancelEdit.hidden = false;
+  document.querySelector('.tab[data-tab="erfassen"]').click();
+  fDate.focus();
+}
+
+function endEdit() {
+  editingId = null;
+  fSubmitBtn.textContent = "Hinzufügen";
+  fCancelEdit.hidden = true;
+  expenseForm.reset();
+  fDate.value = todayISO();
+}
+
+fCancelEdit.addEventListener("click", endEdit);
+
 expenseForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const amount = parseFloat(fAmount.value.replace(",", "."));
   if (!isFinite(amount) || amount <= 0) return;
 
-  const expense = {
-    id: uid(),
-    amount: Math.round(amount * 100) / 100,
-    category: fCategory.value,
-    date: fDate.value || todayISO(),
-    note: fNote.value.trim().slice(0, 200),
-    owner: ownerName,
-    createdAt: Date.now(),
-  };
-
-  sync.addExpense(expense).catch((err) => alert("Konnte Eintrag nicht speichern: " + err.message));
-
-  fAmount.value = "";
-  fNote.value = "";
-  fAmount.focus();
+  if (editingId) {
+    const original = trip.expenses.find((x) => x.id === editingId);
+    if (!original) { endEdit(); return; }
+    const expense = {
+      ...original,
+      amount: Math.round(amount * 100) / 100,
+      category: fCategory.value,
+      date: fDate.value || todayISO(),
+      note: fNote.value.trim().slice(0, 200),
+    };
+    sync.updateExpense(expense).catch((err) => alert("Konnte Eintrag nicht speichern: " + err.message));
+    endEdit();
+  } else {
+    const expense = {
+      id: uid(),
+      amount: Math.round(amount * 100) / 100,
+      category: fCategory.value,
+      date: fDate.value || todayISO(),
+      note: fNote.value.trim().slice(0, 200),
+      owner: ownerName,
+      createdAt: Date.now(),
+    };
+    sync.addExpense(expense).catch((err) => alert("Konnte Eintrag nicht speichern: " + err.message));
+    fAmount.value = "";
+    fNote.value = "";
+    fAmount.focus();
+  }
 
   saveHint.hidden = false;
   clearTimeout(saveHint._t);
@@ -308,18 +346,27 @@ function renderList() {
         <span class="date">${fmtDate(x.date)}</span>
       </span>
       <span class="amount">${fmtMoney(x.amount)}</span>
+      <button class="edit-btn" aria-label="Bearbeiten" data-edit="${x.id}">✏️</button>
       <button class="del-btn" aria-label="Löschen" data-del="${x.id}">🗑</button>
     </li>
   `).join("");
 }
 
 expenseListEl.addEventListener("click", (e) => {
+  const editBtn = e.target.closest("[data-edit]");
+  if (editBtn) {
+    const item = trip.expenses.find((x) => x.id === editBtn.dataset.edit);
+    if (item) startEdit(item);
+    return;
+  }
+
   const btn = e.target.closest("[data-del]");
   if (!btn) return;
   const id = btn.dataset.del;
   const item = trip.expenses.find((x) => x.id === id);
   if (!item) return;
   if (!confirm(`Eintrag "${item.category} · ${fmtMoney(item.amount)}" löschen?`)) return;
+  if (editingId === id) endEdit();
   sync.deleteExpense(id).catch((err) => alert("Konnte nicht löschen: " + err.message));
 });
 

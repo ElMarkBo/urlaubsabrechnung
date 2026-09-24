@@ -193,6 +193,11 @@ export async function addExpense(expense) {
   await setDoc(doc(db, "trips", currentTripId, "expenses", expense.id), expense);
 }
 
+export async function updateExpense(expense) {
+  if (!currentTripId) throw new Error("Keine aktive Reise");
+  await setDoc(doc(db, "trips", currentTripId, "expenses", expense.id), expense);
+}
+
 export async function deleteExpense(id) {
   if (!currentTripId) return;
   await deleteDoc(doc(db, "trips", currentTripId, "expenses", id));

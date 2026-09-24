@@ -208,6 +208,21 @@ input:focus, select:focus {
 }
 .primary-btn:active { opacity: 0.85; }
 
+.form-actions { display: flex; gap: 8px; }
+.form-actions .primary-btn { flex: 1; }
+
+.secondary-btn {
+  padding: 14px;
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secondary-btn:active { opacity: 0.85; }
+
 .hint {
   text-align: center;
   color: var(--text-muted);
@@ -260,11 +275,13 @@ input:focus, select:focus {
 
 .expense-item .amount { font-weight: 700; white-space: nowrap; }
 
-.expense-item .del-btn {
+.expense-item .del-btn,
+.expense-item .edit-btn {
   background: none; border: none; color: var(--text-muted);
   font-size: 1.1rem; cursor: pointer; padding: 4px 6px;
 }
 .expense-item .del-btn:hover { color: var(--danger); }
+.expense-item .edit-btn:hover { color: var(--accent); }
 
 /* ---- Auswertung ---- */
 .summary-cards {
