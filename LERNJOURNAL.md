@@ -129,3 +129,37 @@ Offene Punkte / Backlog:
 Memory-Updates: keine (siehe oben).
 
 ---
+
+2026-09-24 — Korrekturfunktion für Einträge nachgerüstet
+Kontext: Erster echter Einsatz nach dem Go-Live lief laut Nutzer
+ausgezeichnet, aber ein Eintrag hatte ein falsches Datum — es gab bis
+dahin nur Erfassen/Löschen, kein In-Place-Korrigieren.
+
+Entscheidungen:
+- Bearbeiten läuft über dasselbe Formular wie Erfassen (kein separater
+  Dialog): ✏️-Button in der Liste füllt Betrag/Kategorie/Datum/Notiz
+  ins Formular, Submit-Button wechselt auf „Speichern" + „Abbrechen"
+  erscheint. Weniger neue UI-Fläche als ein Modal, nutzt vorhandene
+  Formularvalidierung mit.
+- `sync.updateExpense` ist bewusst identisch zu `addExpense`
+  (`setDoc` ohne Merge, komplettes Dokument überschreiben) — beide
+  bleiben als eigene benannte Funktionen bestehen, weil die Aufrufer
+  in `app.js` unterschiedliche Absicht ausdrücken (neu vs. korrigieren),
+  nicht weil sich die Firestore-Mechanik unterscheidet.
+- `id`/`owner`/`createdAt` des Originaleintrags bleiben beim Speichern
+  erhalten (Spread von `original` vor den geänderten Feldern) — Edit
+  darf weder den Ersteller noch den Sortier-Zeitstempel verändern.
+
+Erkenntnisse:
+- `node --check` war in dieser Umgebung doch vorhanden (entgegen dem
+  Session-Start-Eintrag vom 2026-09-18 „kein Node verfügbar") — reicht
+  für Syntaxprüfung, ersetzt aber keinen echten Browsertest.
+
+Offene Punkte / Backlog:
+- 🟡 Echter Funktionstest mit zwei Geräten weiterhin offen (unverändert
+  aus der Vorsession).
+- 🟡 App-Icon weiterhin Platzhalter.
+
+Memory-Updates: keine (siehe oben).
+
+---

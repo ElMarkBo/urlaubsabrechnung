@@ -24,8 +24,8 @@ Grundfunktionen fertig:
   (Onboarding-Bildschirm, auch `?trip=CODE`-Link für Ein-Klick-Beitritt)
 - Erfassen (Betrag, Kategorie, Datum, Notiz, optional Person-Tag „Dein Name")
 - Liste (Filter nach Kategorie + Person + Volltextsuche, Sortierung nach
-  Datum/Betrag, Löschen) — automatisch synchronisiert über alle Geräte
-  derselben Reise
+  Datum/Betrag, Bearbeiten, Löschen) — automatisch synchronisiert über
+  alle Geräte derselben Reise
 - Auswertung (Summary-Cards: Gesamt/Einträge/Tage/Ø pro Tag,
   Kategorie-Balkendiagramm, Tages-Balkendiagramm, Personen-Balkendiagramm
   (nur sichtbar ab 2 Namen) — alle per Canvas, keine externe Chart-Bibliothek)
