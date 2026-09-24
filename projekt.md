@@ -10,7 +10,7 @@
 
 ---
 
-## Status (Stand 2026-09-19)
+## Status (Stand 2026-09-24)
 
 PWA (HTML/CSS/JS, kein Framework) für Android + iOS über „Zum
 Home-Bildschirm" (kein natives Projekt, siehe Entscheidung unten).
@@ -63,35 +63,28 @@ Grundfunktionen fertig:
 - **PWA statt native App** — einzige praktikable Ein-Codebasis-Lösung für
   Android + iOS ohne Mac/Xcode/Apple-Developer-Account.
 
+## Betrieb
+
+- **Hosting:** https://elmarkbo.github.io/urlaubsabrechnung/ (GitHub
+  Pages, Branch `main`, Repo öffentlich unter
+  https://github.com/ElMarkBo/urlaubsabrechnung).
+- **Firebase-Projekt:** `urlaubskasse` (Projekt-ID `urlaubskasse-7b6ee`)
+  angelegt, Firestore + anonyme Auth aktiv, `js/firebase-config.js` mit
+  echten Werten befüllt und gepusht. Details/Verlauf: `LERNJOURNAL.md`,
+  Eintrag 2026-09-24.
+
 ## Offen / Backlog
 
-- 🔴 **Firebase-Projekt noch nicht angelegt.** `js/firebase-config.js`
-  enthält noch Platzhalter-Werte (`"TODO"`) — ohne echtes Firebase-Projekt
-  bleibt die App auf dem Onboarding-Bildschirm mit Warnung stehen.
-  Setup-Anleitung in `README.md`, Abschnitt „Firebase einrichten".
-- 🔴 **GitHub Pages Hosting noch nicht eingerichtet.** Lokales Repo
-  existiert (`git log` zeigt Commits), aber kein GitHub-Remote/Push —
-  das Anlegen eines **öffentlichen** Repos wurde vom Auto-Mode-
-  Klassifikator als Public-Surface-Aktion blockiert und braucht explizite
-  Freigabe durch den Nutzer (oder Nutzer legt das Repo selbst an: `gh repo
-  create urlaubsabrechnung --public --source=. --remote=origin --push`).
-  Ohne HTTPS-Hosting keine Installation auf iOS.
-- 🟡 **Echter Funktionstest im Browser steht aus**, insbesondere der neue
+- 🟡 **Echter Funktionstest im Browser steht aus**, insbesondere der
   Firebase-Sync-Flow (Reise anlegen/beitreten, Realtime-Update zwischen
-  zwei Sessions, Offline→Online-Übergang). In dieser Session weder Node
-  noch ein Browser-Automatisierungstool verfügbar (`claude-in-chrome`
-  nicht eingerichtet). Geprüft wurde stattdessen: HTML-Tag-Balance +
-  JS→HTML-ID-Abgleich, JSON-Validität, HTTP-Erreichbarkeit aller Assets,
-  Cross-Check der `sync.js`-Exports gegen `app.js`-Aufrufe, sowie
-  mehrfaches manuelles Code-Review der Firebase-API-Aufrufe. **Vor
-  echtem Urlaubseinsatz zwingend:** mit echtem Firebase-Projekt einmal
-  durchklicken — Reise anlegen, mit zweitem Gerät/Browser beitreten,
-  Eintrag auf Gerät A machen und Ankunft auf Gerät B prüfen, Offline-Modus
-  testen (Flugmodus an, Eintrag erfassen, Flugmodus aus → Sync prüfen).
+  zwei Sessions, Offline→Online-Übergang) — jetzt mit echtem, live
+  gehostetem Firebase-Projekt möglich, aber noch nicht durchgeklickt (in
+  dieser Arbeitsumgebung kein Browser verfügbar). **Vor echtem
+  Urlaubseinsatz zwingend:** Reise anlegen, mit zweitem Gerät/Browser
+  beitreten, Eintrag auf Gerät A machen und Ankunft auf Gerät B prüfen,
+  Offline-Modus testen (Flugmodus an, Eintrag erfassen, Flugmodus aus →
+  Sync prüfen).
 - 🟡 **App-Icon ist Platzhalter** — pixel-generiertes „Sonnenuntergang"-Icon
   (kein Bild-/Designtool in dieser Umgebung verfügbar). Bei Bedarf
   ersetzen: `icons/icon-192.png`, `icons/icon-512.png`,
   `icons/apple-touch-icon.png` (quadratisch, PNG).
-- 🟢 Branch lokal bereits auf Umbenennung zu `main` vorbereitet gewesen,
-  aber durch den blockierten `gh repo create`-Aufruf nicht ausgeführt —
-  noch auf `master`. Vor dem Push ggf. `git branch -m master main`.

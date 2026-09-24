@@ -81,3 +81,51 @@ Details bleiben dort — siehe globale Regel zu projektübergreifendem
 Memory).
 
 ---
+
+2026-09-24 — Inbetriebnahme: GitHub Pages + Firebase-Projekt live
+Kontext: Beide roten Blocker aus dem Backlog (Hosting, Firebase) über
+zwei Sessions abgearbeitet — Ziel war der erste echte Einsatz der App.
+
+Entscheidungen:
+- Branch lokal auf `main` umbenannt, danach öffentliches Repo mit
+  `gh repo create urlaubsabrechnung --public --source=. --remote=origin
+  --push` angelegt — Nutzer hat die Public-Surface-Freigabe im Gespräch
+  explizit erteilt (vorherige Blockade durch Auto-Mode-Klassifikator
+  damit aufgelöst).
+- GitHub Pages per `gh api repos/.../pages` (legacy Build, Branch
+  `main`, Pfad `/`) aktiviert statt über die Weboberfläche — schneller
+  und nachvollziehbar im Terminal.
+- Firebase-Projekt „urlaubskasse" (Projekt-ID `urlaubskasse-7b6ee`) vom
+  Nutzer live in der Konsole angelegt, Schritt für Schritt anhand der
+  README-Anleitung begleitet (Firestore Produktionsmodus + eigene
+  Regeln aus `firestore.rules`, anonyme Auth, Web-App-Registrierung
+  ohne Firebase Hosting). Der von der Konsole gelieferte Codeblock
+  enthielt zusätzlich `measurementId` (Analytics) — bewusst nicht mit
+  übernommen, da Analytics in diesem Projekt nicht genutzt wird und
+  `firebase-config.js` nur die für Auth/Firestore nötigen Felder
+  vorsieht.
+- `js/firebase-config.js` mit echten Werten befüllt und gepusht (Config
+  ist laut Projektkommentar kein Geheimnis, Schutz läuft über
+  `firestore.rules`).
+
+Erkenntnisse:
+- `gh repo create --public` lief diesmal ohne Blockade durch — die
+  Blockade in der Vorsession war an die fehlende explizite
+  Nutzerfreigabe gebunden, nicht an den Befehl selbst.
+- Deployment-Verzögerung von GitHub Pages (Erstaktivierung wie auch
+  Content-Update nach Push) zuverlässig per Monitor/Poll-Loop auf den
+  HTTP-Response-Body abgewartet statt fest verstrichene Zeit zu raten.
+
+Offene Punkte / Backlog:
+- 🟡 Echter Funktionstest steht weiterhin aus (Reise anlegen, zweites
+  Gerät per Code/Link beitreten lassen, Offline→Online-Sync prüfen) —
+  muss der Nutzer selbst durchklicken, in dieser Umgebung kein Browser
+  verfügbar.
+- 🟡 App-Icon weiterhin Platzhalter.
+- 🟢 Firestore Security Rules-Modell (Reise-Code als einziger Schutz)
+  unverändert — bewusste Altlast aus dem Projektstart, kein neuer
+  Punkt.
+
+Memory-Updates: keine (siehe oben).
+
+---
