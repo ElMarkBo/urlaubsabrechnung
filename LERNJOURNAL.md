@@ -206,3 +206,5 @@ Offene Punkte / Backlog:
 Memory-Updates: keine.
 
 ---
+
+Tags `v2.0`/`v2.1` am 2026-10-10 nach Nutzerfreigabe lokal und auf origin gelöscht; der Backlog-Punkt dazu entfällt.

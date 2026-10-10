@@ -101,9 +101,6 @@ Grundfunktionen fertig:
   Verifikation am Gerät noch prüfen (`adb shell pm get-app-links
   io.github.elmarkbo.urlaubskasse`). Vor Play-Release Play-Signing-
   Fingerprint in beide Kopien (Repo + `app-android/app-links/`) ergänzen.
-- 🟡 **Tags `v2.0`/`v2.1` löschen** (lokal + origin): Versionen wurden
-  verworfen, Version bleibt `1.0` bis zur Veröffentlichung. Löschen vom
-  Auto-Mode blockiert, braucht Nutzer-Freigabe.
 - 🟡 **Code-Verlust auf Android**: Ursache unbewiesen, Mitigation
   (IndexedDB-Spiegel + `persist()`) live. Gegenprobe: App wegwischen und
   neu öffnen; wird wieder gefragt, räumt das Gerät auch IndexedDB.
