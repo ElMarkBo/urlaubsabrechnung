@@ -138,6 +138,7 @@ sw.js                   Service Worker für Offline-Nutzung des App-Codes
 firestore.rules         Referenz-Kopie der Firestore-Sicherheitsregeln
 icons/                  App-Icons (generiert von tools/make-icons.py)
 app-android/            Capacitor-Hülle für die Android-App
+app-android/app-links/  Vorlage für .well-known/assetlinks.json (App Links)
 ```
 
 ## Bekannte Grenzen
@@ -149,3 +150,18 @@ app-android/            Capacitor-Hülle für die Android-App
   Erfassung komplett offline weiter.
 - Keine Aufteilung zwischen mehreren Personen (bewusst nicht gebaut,
   siehe `projekt.md`) — nur ein optionales Namens-Tag pro Eintrag.
+
+## Android App Links (Einladungslinks direkt in der App öffnen)
+
+Die App registriert `https://elmarkbo.github.io/urlaubsabrechnung…` mit
+`autoVerify`. Android verifiziert das über
+`https://elmarkbo.github.io/.well-known/assetlinks.json` — GitHub Pages
+liefert das nur aus einem **User-Site-Repo `ElMarkBo/elmarkbo.github.io`**
+(mit leerer Datei `.nojekyll`, sonst blendet Jekyll `.well-known` aus).
+Vorlage: `app-android/app-links/assetlinks.json` (aktuell nur der
+Debug-Schlüssel). Vor dem Play-Release den SHA-256 des Play-App-Signing-
+Schlüssels (Play Console → App-Integrität) zusätzlich eintragen. Debug-
+Fingerabdruck neu auslesen:
+`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`.
+Solange das Repo fehlt, öffnen Einladungslinks die App nur, wenn der Nutzer
+sie unter „Standardmäßig öffnen" manuell zuweist.

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.elmarkbo.urlaubskasse",
+      "sha256_cert_fingerprints": [
+        "A5:97:A5:01:A8:45:5F:D5:A8:E8:B1:C5:CF:9E:AD:29:C7:06:C9:04:80:EB:2C:8D:3A:60:30:C6:06:94:5C:00"
+      ]
+    }
+  }
+]
