@@ -748,6 +748,8 @@ async function init() {
     history.replaceState(null, "", location.pathname);
   }
 
+  await sync.restoreStoredTripId();
+
   if (sync.getStoredTripId()) {
     sync.resumeStoredTrip();
     showApp();

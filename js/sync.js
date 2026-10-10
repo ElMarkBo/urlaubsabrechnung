@@ -30,6 +30,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const TRIP_ID_KEY = "urlaubsabrechnung_tripid";
+const BACKUP_DB = "urlaubsabrechnung_backup";
+const BACKUP_STORE = "kv";
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // ohne O/0, I/1, L — Verwechslungsgefahr
 
 export function isConfigured() {
@@ -67,16 +69,59 @@ export function getStoredTripId() {
   return localStorage.getItem(TRIP_ID_KEY) || null;
 }
 
+// Spiegel des Reise-Codes in IndexedDB: auf manchen Android-Geräten ging
+// localStorage zwischen App-Starts verloren, IndexedDB (dort liegt auch die
+// Firebase-Auth) blieb erhalten.
+function withBackupStore(mode, fn) {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open(BACKUP_DB, 1);
+    open.onupgradeneeded = () => open.result.createObjectStore(BACKUP_STORE);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const tx = open.result.transaction(BACKUP_STORE, mode);
+      const req = fn(tx.objectStore(BACKUP_STORE));
+      tx.oncomplete = () => {
+        open.result.close();
+        resolve(req.result);
+      };
+      tx.onerror = () => reject(tx.error);
+    };
+  });
+}
+
 function storeTripId(id) {
   localStorage.setItem(TRIP_ID_KEY, id);
+  withBackupStore("readwrite", (st) => st.put(id, TRIP_ID_KEY)).catch(() => {});
 }
 
 function clearStoredTripId() {
   localStorage.removeItem(TRIP_ID_KEY);
+  withBackupStore("readwrite", (st) => st.delete(TRIP_ID_KEY)).catch(() => {});
+}
+
+/**
+ * Fehlt der Code in localStorage, aus dem IndexedDB-Spiegel zurückholen.
+ * Gibt true zurück, wenn dabei wiederhergestellt wurde.
+ */
+export async function restoreStoredTripId() {
+  if (getStoredTripId()) return false;
+  try {
+    const id = await withBackupStore("readonly", (st) => st.get(TRIP_ID_KEY));
+    if (!id) return false;
+    localStorage.setItem(TRIP_ID_KEY, id);
+    console.warn("Reise-Code aus IndexedDB-Spiegel wiederhergestellt (localStorage war leer).");
+    return true;
+  } catch (err) {
+    return false;
+  }
 }
 
 export function initSync(cb) {
   Object.assign(callbacks, cb);
+
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
 
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
