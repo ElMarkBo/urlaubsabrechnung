@@ -765,7 +765,8 @@ async function init() {
     showOnboarding();
   }
 
-  if ("serviceWorker" in navigator) {
+  const isNativeShell = window.Capacitor?.isNativePlatform?.();
+  if ("serviceWorker" in navigator && !isNativeShell) {
     navigator.serviceWorker.register("sw.js").catch((err) => {
       console.warn("Service Worker Registrierung fehlgeschlagen:", err);
     });

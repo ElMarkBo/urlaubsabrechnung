@@ -1,0 +1,6 @@
+{
+  "appId": "io.github.elmarkbo.urlaubskasse",
+  "appName": "Urlaubskasse",
+  "webDir": "www",
+  "android": { "backgroundColor": "#f7f7f5" }
+}
