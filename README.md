@@ -106,7 +106,10 @@ Startbildschirm:
 - erste Zahl = größeres Update / neue Funktion (zweite Zahl wird dann `0`),
 - zweite Zahl = Fehlerbehebung ohne neue Funktion.
 
-Beispiel: `2.0` → `2.1` (Fix) → `2.2` (Fix) → `3.0` (neue Funktion).
+Beispiel: `1.0` → `1.1` (Fix) → `1.2` (Fix) → `2.0` (neue Funktion).
+
+**Bis zur ersten Veröffentlichung (Play Store) bleibt die Version `1.0`** —
+erst danach wird hochgezählt.
 
 Einzige Quelle ist `js/version.js`. Daraus leiten sich ab: die Anzeige in
 der App, der Cache-Name des Service Workers (jede Version erneuert den

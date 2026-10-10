@@ -191,3 +191,18 @@ Offene Punkte / Backlog:
 Memory-Updates: keine.
 
 ---
+
+2026-10-10 — Nachtrag: Version bleibt 1.0, App-Links-Repo angelegt
+Kontext: Folgeanweisung derselben Session.
+Entscheidungen:
+- Version bleibt bis zur ersten Veröffentlichung `1.0` (versionCode 1000); die zuvor vergebenen Versionen 2.0/2.1 gelten als verworfen (Einträge oben nennen sie nur historisch). Hochgezählt wird erst nach dem Play-Release.
+- `ElMarkBo/elmarkbo.github.io` (öffentlich, Pages aktiv) mit `.well-known/assetlinks.json` (Debug-Key) + `.nojekyll` angelegt, auf ausdrückliche Nutzerfreigabe.
+Erkenntnisse:
+- Der erste Anlegeversuch scheiterte lautlos an fehlender Git-Identität im frischen Verzeichnis (`set -e` greift nicht in `&&`-Ketten) — Exit-Status prüfen, nicht auf Folgebefehle verlassen.
+Offene Punkte / Backlog:
+- 🟡 Tags `v2.0`/`v2.1` existieren noch (lokal + origin); Löschen wurde vom Auto-Mode blockiert → Nutzerfreigabe.
+- 🟡 App-Links-Verifikation am Gerät prüfen (`pm get-app-links`); Play-Signing-Fingerprint später in beide assetlinks-Kopien.
+
+Memory-Updates: keine.
+
+---

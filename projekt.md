@@ -15,7 +15,8 @@
 PWA (HTML/CSS/JS, kein Framework): iOS über „Zum Home-Bildschirm",
 Android zusätzlich als Capacitor-Hülle `app-android/` (Debug-APK, Weg
 zum Play Store; siehe Entscheidung unten). Sichtbare Version
-`MAJOR.FIX` (Quelle `js/version.js`, Details README).
+`MAJOR.FIX` (Quelle `js/version.js`, Details README); bleibt `1.0`
+bis zur ersten Veröffentlichung.
 Firebase/Firestore als Cloud-Backend: automatischer Sync zwischen
 mehreren Geräten/Personen, sobald Internet da ist, mit eingebauter
 Offline-Persistenz für die Erfassung ohne Netz (Details/Setup-Schritte
@@ -90,16 +91,19 @@ Grundfunktionen fertig:
   beitreten, Eintrag auf Gerät A machen und Ankunft auf Gerät B prüfen,
   Offline-Modus testen (Flugmodus an, Eintrag erfassen, Flugmodus aus →
   Sync prüfen).
-- 🟠 **APK 2.1 auf echtem Android-Gerät testen** (Offline-Start, Beitritt,
+- 🟠 **APK 1.0 auf echtem Android-Gerät testen** (Offline-Start, Beitritt,
   QR/Teilen, Deep Link) — bisher nur gebaut, nie ausgeführt.
 - 🟠 **Firebase-API-Key-Referrer prüfen**: falls eingeschränkt,
   `https://localhost` in Cloud Console → Anmeldedaten freigeben, sonst
   kann die Auth in der App scheitern.
-- 🟡 **Verifizierte App Links**: öffentliches Repo
-  `ElMarkBo/elmarkbo.github.io` mit `.well-known/assetlinks.json`
-  (Vorlage `app-android/app-links/`) + `.nojekyll` anlegen — noch nicht
-  angelegt (Freigabe offen). Vor Play-Release Play-Signing-Fingerprint
-  ergänzen.
+- 🟡 **Verifizierte App Links**: Repo `ElMarkBo/elmarkbo.github.io`
+  (assetlinks.json + `.nojekyll`, Pages aktiv) steht seit 2026-10-10;
+  Verifikation am Gerät noch prüfen (`adb shell pm get-app-links
+  io.github.elmarkbo.urlaubskasse`). Vor Play-Release Play-Signing-
+  Fingerprint in beide Kopien (Repo + `app-android/app-links/`) ergänzen.
+- 🟡 **Tags `v2.0`/`v2.1` löschen** (lokal + origin): Versionen wurden
+  verworfen, Version bleibt `1.0` bis zur Veröffentlichung. Löschen vom
+  Auto-Mode blockiert, braucht Nutzer-Freigabe.
 - 🟡 **Code-Verlust auf Android**: Ursache unbewiesen, Mitigation
   (IndexedDB-Spiegel + `persist()`) live. Gegenprobe: App wegwischen und
   neu öffnen; wird wieder gefragt, räumt das Gerät auch IndexedDB.
