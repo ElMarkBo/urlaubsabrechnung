@@ -163,3 +163,31 @@ Offene Punkte / Backlog:
 Memory-Updates: keine (siehe oben).
 
 ---
+
+2026-10-10 — Android-Hülle, Versionierung, QR-Einladung, App Links
+Kontext: Android (Chrome-PWA) fragte wiederholt nach dem Beitrittscode; daraus wurde der Weg zum Play Store (Icon, APK) bei unverändert funktionierender iPhone-PWA, plus sichtbare Versionierung und Einladung per QR/WhatsApp.
+Entscheidungen:
+- Trip-Code zusätzlich in IndexedDB spiegeln und `navigator.storage.persist()` anfordern (`d6dc6d3`). Ursache des Code-Verlusts ist **nicht bewiesen** — Maßnahme ist Mitigation; Gegenprobe in Backlog.
+- Capacitor-Hülle statt TWA (`5559a02`): eigener Offline-Start ohne Chrome-Abhängigkeit, Plugins (Share, App) ohne Bundler nutzbar; iPhone bleibt PWA. appId `io.github.elmarkbo.urlaubskasse`, Name „Urlaubskasse" (nach Veröffentlichung unveränderlich).
+- Firebase-SDK-Module werden nur im nativen Build (`sync-web.mjs`, nur `www/`) lokal gebündelt und die Importe umgeschrieben; Repo-Quellen/PWA laden weiter vom CDN. Service Worker ist nativ deaktiviert. Grund: sonst scheitert der Offline-Start der App.
+- Neues Icon (Sonnenuntergang + €-Sonne) per reinem Python-SDF-Renderer `tools/make-icons.py` (keine Bild-Tools nötig); erzeugt auch die adaptiven Android-Quellen.
+- Versionierung `MAJOR.FIX` (`js/version.js` = einzige Quelle; speist Anzeige, SW-Cache-Name, versionName, versionCode = M*1000+F) (`798c018`).
+- Einladung als Link + QR (vendored qrcode-generator, per jsQR-Roundtrip geprüft) + Share-Sheet (Capacitor Share → `navigator.share` → `wa.me`). Natives `location.origin` ist `https://localhost` → Link nutzt `PUBLIC_APP_URL`. Beim Öffnen eines Links mit anderem Code wird nachgefragt, bevor die bestehende Reise verlassen wird; scheitert der Beitritt, wird die alte Reise wieder aufgenommen. `launchUrlHandled` (sessionStorage) verhindert Re-Join-Schleife nach „Reise verlassen".
+- Kein In-App-QR-Scanner: Kamera-App reicht vorerst (Nutzerentscheidung).
+- App Links: `autoVerify` im Manifest, Vorlage `app-android/app-links/assetlinks.json` (Debug-Key) im Repo, Version 2.1. Das nötige öffentliche User-Site-Repo `ElMarkBo/elmarkbo.github.io` wurde **nicht** angelegt — die Anlage wurde vom Auto-Mode-Classifier („Create Public Surface") blockiert; wartet auf explizite Freigabe/Selbstausführung.
+Erkenntnisse:
+- Capacitor 8 braucht Node ≥ 22, Toolchain unter `~/android-toolchain` entsprechend auf 22.23.3 gehoben; Android-SDK-Platform 36 + build-tools 36.0.0 ergänzt.
+- GitHub Pages blendet `.well-known` via Jekyll aus → im User-Site-Repo `.nojekyll` nötig; assetlinks muss unter der Domain-Wurzel liegen, nicht unter `/urlaubsabrechnung/`.
+- Debug-APK ist mit dem Debug-Key signiert; für Play zählt der Play-App-Signing-Key → Fingerprint dann in assetlinks ergänzen.
+- Keine automatisierten Tests im Projekt; geprüft wurden Build, `aapt2 badging` (2.1/2001) und QR-Roundtrip. **Nichts davon auf einem Gerät/Emulator laufen gelassen.**
+Offene Punkte / Backlog:
+- 🟠 APK 2.1 auf echtem Android-Gerät testen (Start offline, Beitritt, QR/Share, Deep Link); ungetestet.
+- 🟠 Firebase-API-Key: falls HTTP-Referrer-eingeschränkt, `https://localhost` freigeben (Cloud Console → Anmeldedaten), sonst Auth in der App evtl. blockiert.
+- 🟡 User-Site-Repo `elmarkbo.github.io` mit `assetlinks.json` + `.nojekyll` anlegen (Freigabe offen), danach `adb shell pm get-app-links` prüfen.
+- 🟡 Persistenz-Ursache des Code-Verlusts prüfen (App wegwischen, neu öffnen; fragt sie wieder → Gerät räumt auch IndexedDB).
+- 🟡 Play: Entwicklerkonto (25 USD), geschlossener Test (12 Tester / 14 Tage), Datenschutzerklärung-URL, Data-Safety-Formular, Release-Keystore (nie committen) + AAB, appId/Name final bestätigen.
+- 🟡 Echter Zwei-Geräte-Funktionstest weiterhin offen.
+
+Memory-Updates: keine.
+
+---

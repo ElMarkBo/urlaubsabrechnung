@@ -10,10 +10,12 @@
 
 ---
 
-## Status (Stand 2026-09-24)
+## Status (Stand 2026-10-10)
 
-PWA (HTML/CSS/JS, kein Framework) für Android + iOS über „Zum
-Home-Bildschirm" (kein natives Projekt, siehe Entscheidung unten).
+PWA (HTML/CSS/JS, kein Framework): iOS über „Zum Home-Bildschirm",
+Android zusätzlich als Capacitor-Hülle `app-android/` (Debug-APK, Weg
+zum Play Store; siehe Entscheidung unten). Sichtbare Version
+`MAJOR.FIX` (Quelle `js/version.js`, Details README).
 Firebase/Firestore als Cloud-Backend: automatischer Sync zwischen
 mehreren Geräten/Personen, sobald Internet da ist, mit eingebauter
 Offline-Persistenz für die Erfassung ohne Netz (Details/Setup-Schritte
@@ -60,8 +62,12 @@ Grundfunktionen fertig:
   Nutzerwunsch bewusst nicht gebaut. Es gibt aber ein leichtgewichtiges
   optionales "Dein Name"-Feld pro Gerät, das Einträge taggt (nur
   Sichtbarkeit/Filter/Sortierung "nach Person", keine Verrechnung).
-- **PWA statt native App** — einzige praktikable Ein-Codebasis-Lösung für
-  Android + iOS ohne Mac/Xcode/Apple-Developer-Account.
+- **PWA + Capacitor-Hülle nur für Android.** iPhone bleibt PWA (kein
+  Mac/Xcode/Apple-Developer-Account). Android bekommt für den Play Store
+  eine Capacitor-Hülle (statt TWA: Offline-Start unabhängig von Chrome,
+  Share-Plugin); eine Codebasis, `sync-web.mjs` kopiert sie nach `www/`.
+- **Einladung per Link/QR/Share-Sheet**, kein In-App-Scanner (Kamera-App
+  reicht).
 
 ## Betrieb
 
@@ -75,7 +81,7 @@ Grundfunktionen fertig:
 
 ## Offen / Backlog
 
-- 🟡 **Echter Funktionstest im Browser steht aus**, insbesondere der
+- 🟡 **Echter Funktionstest (zwei Geräte) steht aus**, insbesondere der
   Firebase-Sync-Flow (Reise anlegen/beitreten, Realtime-Update zwischen
   zwei Sessions, Offline→Online-Übergang) — jetzt mit echtem, live
   gehostetem Firebase-Projekt möglich, aber noch nicht durchgeklickt (in
@@ -84,7 +90,19 @@ Grundfunktionen fertig:
   beitreten, Eintrag auf Gerät A machen und Ankunft auf Gerät B prüfen,
   Offline-Modus testen (Flugmodus an, Eintrag erfassen, Flugmodus aus →
   Sync prüfen).
-- 🟡 **App-Icon ist Platzhalter** — pixel-generiertes „Sonnenuntergang"-Icon
-  (kein Bild-/Designtool in dieser Umgebung verfügbar). Bei Bedarf
-  ersetzen: `icons/icon-192.png`, `icons/icon-512.png`,
-  `icons/apple-touch-icon.png` (quadratisch, PNG).
+- 🟠 **APK 2.1 auf echtem Android-Gerät testen** (Offline-Start, Beitritt,
+  QR/Teilen, Deep Link) — bisher nur gebaut, nie ausgeführt.
+- 🟠 **Firebase-API-Key-Referrer prüfen**: falls eingeschränkt,
+  `https://localhost` in Cloud Console → Anmeldedaten freigeben, sonst
+  kann die Auth in der App scheitern.
+- 🟡 **Verifizierte App Links**: öffentliches Repo
+  `ElMarkBo/elmarkbo.github.io` mit `.well-known/assetlinks.json`
+  (Vorlage `app-android/app-links/`) + `.nojekyll` anlegen — noch nicht
+  angelegt (Freigabe offen). Vor Play-Release Play-Signing-Fingerprint
+  ergänzen.
+- 🟡 **Code-Verlust auf Android**: Ursache unbewiesen, Mitigation
+  (IndexedDB-Spiegel + `persist()`) live. Gegenprobe: App wegwischen und
+  neu öffnen; wird wieder gefragt, räumt das Gerät auch IndexedDB.
+- 🟡 **Play-Veröffentlichung**: Entwicklerkonto (25 USD), geschlossener
+  Test (12 Tester / 14 Tage), Datenschutzerklärung-URL, Data-Safety,
+  Release-Keystore (nie committen) + AAB, appId/Name final bestätigen.
