@@ -445,3 +445,20 @@ fieldset legend { padding: 0 6px; color: var(--text-muted); font-size: 0.85rem; 
 .danger-btn { color: var(--danger) !important; border-color: var(--danger-bg) !important; }
 
 .dialog-actions { margin-top: 4px; }
+
+.qr-box {
+  width: min(240px, 100%);
+  margin: 0 auto 14px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  line-height: 0;
+}
+.qr-box svg { width: 100%; height: auto; display: block; }
+.share-row { margin-bottom: 14px; }
+.share-row .primary-btn { width: 100%; }
+.app-version {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

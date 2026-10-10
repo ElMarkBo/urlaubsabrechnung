@@ -64,9 +64,19 @@ das automatisch.
 
 Beim ersten Öffnen: entweder **„Reise starten"** (legt einen neuen
 6-stelligen Code an) oder **„Reise beitreten"** mit dem Code der/des
-anderen. Der Code steht danach auch jederzeit unter ⚙️ „Reise teilen" —
-„Kopieren" kopiert einen fertigen Link (`?trip=CODE`), den die andere
-Person nur noch antippen muss, um direkt beizutreten.
+anderen. Unter ⚙️ „Reise teilen" steht danach jederzeit:
+
+- ein **QR-Code** — die andere Person scannt ihn mit der Kamera-App
+  ihres Handys und landet direkt in der Reise (Handy aufs Handy),
+- **„Einladung teilen"** — öffnet das Teilen-Menü des Handys (WhatsApp
+  u. a.) mit Einladungstext und Link,
+- **„Link kopieren"** — kopiert den Link `…/?trip=CODE`.
+
+Hat ein Gerät schon eine Reise und öffnet einen Einladungslink einer
+anderen, fragt die App nach, ob gewechselt werden soll. In der
+Android-App öffnen Einladungslinks die App, sofern sie als Standard für
+den Link gewählt wurde (Android-Einstellungen → Apps → Urlaubskasse →
+„Standardmäßig öffnen").
 
 Ab dann läuft alles automatisch: jede Person erfasst offline auf dem
 eigenen Handy, sobald wieder Internet da ist, gleichen sich beide
@@ -88,6 +98,31 @@ Auswertung → „Backup (JSON) exportieren" bzw. „CSV exportieren" — reine
 Download-Kopien für den eigenen Gebrauch (Excel, Archiv). Die
 eigentliche Datenhaltung läuft über Firestore, nicht über diese Dateien.
 
+## Versionierung
+
+Format **`MAJOR.FIX`**, sichtbar in ⚙️ Einstellungen und auf dem
+Startbildschirm:
+
+- erste Zahl = größeres Update / neue Funktion (zweite Zahl wird dann `0`),
+- zweite Zahl = Fehlerbehebung ohne neue Funktion.
+
+Beispiel: `2.0` → `2.1` (Fix) → `2.2` (Fix) → `3.0` (neue Funktion).
+
+Einzige Quelle ist `js/version.js`. Daraus leiten sich ab: die Anzeige in
+der App, der Cache-Name des Service Workers (jede Version erneuert den
+Cache) und die Android-Version (`versionName` = `M.F`,
+`versionCode` = `M*1000+F`, geschrieben von `app-android/scripts/sync-web.mjs`).
+Nach jedem Release ein Git-Tag `vM.F` setzen.
+
+## Android-App (Capacitor)
+
+`app-android/` verpackt die Web-Dateien als Android-App (Play-Store-Vorbereitung).
+Debug-APK bauen: `source ~/android-toolchain/env.sh && cd app-android && npm run build:debug`
+→ `android/app/build/outputs/apk/debug/app-debug.apk`. Das Firebase-SDK wird dabei
+lokal eingebunden (Start ohne Netz), der Service Worker ist in der App abgeschaltet.
+Icons erzeugt `python3 tools/make-icons.py`, danach `npx capacitor-assets generate --android`.
+iPhone bleibt bei der PWA (eine iOS-App bräuchte Mac + Apple-Developer-Account).
+
 ## Projektstruktur
 
 ```
@@ -95,11 +130,14 @@ index.html            Onboarding + Haupt-App (drei Tabs)
 css/style.css          Styling, hell/dunkel automatisch nach Systemeinstellung
 js/app.js              UI-Logik (Rendering, Formulare, Charts, Export)
 js/sync.js              Firebase-Anbindung (Auth, Firestore, Realtime-Sync)
+js/version.js           App-Version (einzige Quelle, siehe Versionierung)
+js/vendor/qrcode.mjs    QR-Code-Generator (qrcode-generator, MIT)
 js/firebase-config.js   Eigene Firebase-Projekt-Zugangsdaten (siehe oben)
 manifest.json           PWA-Manifest (Icons, Name, Startseite)
 sw.js                   Service Worker für Offline-Nutzung des App-Codes
 firestore.rules         Referenz-Kopie der Firestore-Sicherheitsregeln
-icons/                  App-Icons (generiert)
+icons/                  App-Icons (generiert von tools/make-icons.py)
+app-android/            Capacitor-Hülle für die Android-App
 ```
 
 ## Bekannte Grenzen

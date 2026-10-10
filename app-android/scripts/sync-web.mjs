@@ -16,6 +16,15 @@ for (const entry of ["index.html", "manifest.json", "css", "js", "icons"]) {
   cpSync(join(root, entry), join(www, entry), { recursive: true });
 }
 
+// Android version derives from js/version.js: versionName "M.F", versionCode M*1000+F.
+const versionMatch = readFileSync(join(www, "js", "version.js"), "utf8").match(/APP_VERSION\s*=\s*"(\d+)\.(\d+)"/);
+if (!versionMatch) throw new Error('js/version.js: APP_VERSION must look like "2.0"');
+const [, major, fix] = versionMatch;
+writeFileSync(
+  join(here, "..", "android", "app", "version.properties"),
+  `versionName=${major}.${fix}\nversionCode=${Number(major) * 1000 + Number(fix)}\n`
+);
+
 const syncPath = join(www, "js", "sync.js");
 const syncSrc = readFileSync(syncPath, "utf8");
 const match = syncSrc.match(/https:\/\/www\.gstatic\.com\/firebasejs\/([\d.]+)\//);

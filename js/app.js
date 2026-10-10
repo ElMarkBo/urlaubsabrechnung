@@ -12,8 +12,12 @@
    ========================================================================= */
 
 import * as sync from "./sync.js";
+import qrcode from "./vendor/qrcode.mjs";
 
 const OWNER_KEY = "urlaubsabrechnung_owner";
+const PUBLIC_APP_URL = "https://elmarkbo.github.io/urlaubsabrechnung/";
+
+document.querySelectorAll("[data-app-version]").forEach((n) => { n.textContent = globalThis.APP_VERSION || "?"; });
 
 const CURRENCIES = [
   "EUR", "USD", "GBP", "CHF", "JPY", "SEK", "NOK", "DKK",
@@ -615,6 +619,7 @@ el("btn-settings").addEventListener("click", () => {
   sTripTitle.value = trip.title;
   sOwner.value = ownerName;
   sTripCode.textContent = sync.getCurrentTripId() || "------";
+  renderInviteQr();
   populateCurrencySelect();
   renderCategoryManageList();
   settingsDialog.showModal();
@@ -667,10 +672,49 @@ sNewCategory.addEventListener("keydown", (e) => {
   }
 });
 
+/* ---------------------------------------------------------------------- */
+/* Einladung: Link, QR-Code, Teilen                                        */
+/* ---------------------------------------------------------------------- */
+
+const nativePlugins = () => (window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins : null);
+
+function tripCodeFromUrl(url) {
+  try {
+    return new URL(url).searchParams.get("trip");
+  } catch {
+    return null;
+  }
+}
+
+// In der nativen App ist location.origin "https://localhost" — für Einladungen
+// braucht es immer die öffentliche Adresse der Web-App.
+function inviteLink(tripId) {
+  const base = nativePlugins() ? PUBLIC_APP_URL : `${location.origin}${location.pathname}`;
+  return `${base}?trip=${encodeURIComponent(tripId)}`;
+}
+
+function renderInviteQr() {
+  const box = el("s-qr");
+  const tripId = sync.getCurrentTripId();
+  if (!tripId) {
+    box.innerHTML = "";
+    return;
+  }
+  const qr = qrcode(0, "M");
+  qr.addData(inviteLink(tripId));
+  qr.make();
+  box.innerHTML = qr.createSvgTag({
+    cellSize: 4,
+    margin: 16,
+    scalable: true,
+    alt: `QR-Code zum Beitreten, Reise-Code ${tripId}`,
+  });
+}
+
 el("btn-copy-code").addEventListener("click", async () => {
   const tripId = sync.getCurrentTripId();
   if (!tripId) return;
-  const link = `${location.origin}${location.pathname}?trip=${tripId}`;
+  const link = inviteLink(tripId);
   try {
     await navigator.clipboard.writeText(link);
     const btn = el("btn-copy-code");
@@ -679,6 +723,28 @@ el("btn-copy-code").addEventListener("click", async () => {
     setTimeout(() => { btn.textContent = original; }, 1500);
   } catch {
     alert(`Konnte nicht automatisch kopieren. Code/Link von Hand teilen:\n\n${tripId}\n${link}`);
+  }
+});
+
+el("btn-share-trip").addEventListener("click", async () => {
+  const tripId = sync.getCurrentTripId();
+  if (!tripId) return;
+  const link = inviteLink(tripId);
+  const title = trip.title ? `„${trip.title}"` : "meiner Reise";
+  const text = `Tritt ${title} in der Urlaubskasse bei: ${link}\n(Reise-Code: ${tripId})`;
+  try {
+    const native = nativePlugins();
+    if (native?.Share) {
+      await native.Share.share({ title: "Urlaubskasse", text, dialogTitle: "Einladung teilen" });
+    } else if (navigator.share) {
+      await navigator.share({ title: "Urlaubskasse", text });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+    }
+  } catch (err) {
+    if (err?.name !== "AbortError" && !/cancel/i.test(err?.message || "")) {
+      alert(`Teilen hat nicht geklappt. Link von Hand weitergeben:\n\n${link}`);
+    }
   }
 });
 
@@ -742,21 +808,48 @@ async function init() {
 
   await sync.initSync({ onTripData, onExpenses, onConnectionChange, onAuthError: () => {} });
 
-  const params = new URLSearchParams(location.search);
-  const urlCode = params.get("trip");
+  const native = nativePlugins();
+  let urlCode = new URLSearchParams(location.search).get("trip");
   if (urlCode) {
     history.replaceState(null, "", location.pathname);
   }
+  // Kaltstart über Einladungslink in der nativen App: der Link steckt im Start-Intent,
+  // nicht in location. Nur einmal pro Prozess auswerten, sonst würde "Reise verlassen"
+  // + Neuladen die alte Einladung erneut annehmen.
+  if (!urlCode && native?.App && !sessionStorage.getItem("launchUrlHandled")) {
+    sessionStorage.setItem("launchUrlHandled", "1");
+    urlCode = tripCodeFromUrl((await native.App.getLaunchUrl())?.url);
+  }
+  // Warmstart: App läuft schon, Link kommt per Intent. Neu laden mit ?trip=, init entscheidet.
+  native?.App?.addListener("appUrlOpen", ({ url }) => {
+    const code = tripCodeFromUrl(url)?.trim().toUpperCase();
+    if (code && code !== sync.getCurrentTripId()) {
+      location.href = `${location.pathname}?trip=${encodeURIComponent(code)}`;
+    }
+  });
 
   await sync.restoreStoredTripId();
 
-  if (sync.getStoredTripId()) {
+  let storedId = sync.getStoredTripId();
+  const wantedId = urlCode ? urlCode.trim().toUpperCase() : null;
+  let previousId = null;
+  if (wantedId && storedId && wantedId !== storedId &&
+      confirm(`Zur Reise ${wantedId} wechseln? Die bisherige Reise (${storedId}) bleibt in der Cloud erhalten, dieses Gerät verlässt sie nur.`)) {
+    previousId = storedId;
+    sync.leaveTrip();
+    storedId = null;
+  }
+
+  if (storedId) {
     sync.resumeStoredTrip();
     showApp();
-  } else if (urlCode) {
-    const ok = await sync.joinTrip(urlCode);
-    if (ok) {
+  } else if (wantedId) {
+    if (await sync.joinTrip(wantedId)) {
       showApp();
+    } else if (previousId) {
+      await sync.joinTrip(previousId);
+      showApp();
+      alert(`Reise-Code ${wantedId} nicht gefunden — du bist weiter in der bisherigen Reise (${previousId}).`);
     } else {
       showOnboarding();
       obJoinError.hidden = false;
@@ -765,8 +858,7 @@ async function init() {
     showOnboarding();
   }
 
-  const isNativeShell = window.Capacitor?.isNativePlatform?.();
-  if ("serviceWorker" in navigator && !isNativeShell) {
+  if ("serviceWorker" in navigator && !native) {
     navigator.serviceWorker.register("sw.js").catch((err) => {
       console.warn("Service Worker Registrierung fehlgeschlagen:", err);
     });

@@ -44,6 +44,8 @@
       <p id="ob-join-error" class="hint error" hidden>Code nicht gefunden. Bitte prüfen.</p>
     </div>
 
+    <p class="app-version">Version <span data-app-version></span></p>
+
     <p id="ob-config-warning" class="hint error" hidden>
       Firebase ist noch nicht eingerichtet (js/firebase-config.js). Ohne
       das funktioniert kein Sync — siehe projekt.md.
@@ -177,15 +179,21 @@
 
     <fieldset>
       <legend>Reise teilen</legend>
-      <p class="hint">Diesen Code an Mitreisende geben, damit ihre Einträge automatisch mit einlaufen:</p>
+      <p class="hint">Mitreisende scannen den QR-Code mit der Kamera ihres Handys oder bekommen den Einladungslink per WhatsApp — dann laufen ihre Einträge automatisch mit ein:</p>
+      <div id="s-qr" class="qr-box"></div>
       <div class="trip-code-row">
         <span id="s-trip-code" class="trip-code">------</span>
-        <button type="button" id="btn-copy-code">Kopieren</button>
+        <button type="button" id="btn-copy-code">Link kopieren</button>
+      </div>
+      <div class="share-row">
+        <button type="button" id="btn-share-trip" class="primary-btn">Einladung teilen (WhatsApp &amp; Co.)</button>
       </div>
       <div class="danger-row">
         <button type="button" id="btn-leave-trip" class="danger-btn">Reise verlassen (auf diesem Gerät)</button>
       </div>
     </fieldset>
+
+    <p class="app-version">Version <span data-app-version></span></p>
 
     <div class="dialog-actions">
       <button type="submit" class="primary-btn">Schließen</button>
@@ -195,6 +203,7 @@
 
 </div>
 
+<script src="js/version.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

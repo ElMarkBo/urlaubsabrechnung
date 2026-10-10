@@ -1,14 +1,16 @@
-// Simple app-shell cache for offline use. Bump CACHE_VERSION on any
-// change to the cached files so clients pick up the new version.
-const CACHE_VERSION = "v4";
-const CACHE_NAME = `urlaubsabrechnung-${CACHE_VERSION}`;
+// Simple app-shell cache for offline use. The cache name follows the app
+// version (js/version.js), so every release invalidates the old cache.
+importScripts("./js/version.js");
+const CACHE_NAME = `urlaubsabrechnung-v${self.APP_VERSION}`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
   "./css/style.css",
+  "./js/version.js",
   "./js/app.js",
+  "./js/vendor/qrcode.mjs",
   "./js/sync.js",
   "./js/firebase-config.js",
   "./icons/icon-192.png",
